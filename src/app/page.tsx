@@ -1,95 +1,59 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
 
-export default function Home() {
+import React from 'react';
+import { StartupList } from '@/components';
+
+export default function HomePage() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Starfield background */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `
+            radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
+            radial-gradient(2px 2px at 40px 70px, rgba(100, 255, 218, 0.8), transparent),
+            radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.6), transparent),
+            radial-gradient(1px 1px at 130px 80px, rgba(124, 77, 255, 0.8), transparent),
+            radial-gradient(2px 2px at 160px 30px, rgba(255, 255, 255, 0.4), transparent),
+            radial-gradient(1px 1px at 200px 60px, rgba(255, 64, 129, 0.8), transparent),
+            radial-gradient(1px 1px at 240px 90px, rgba(255, 255, 255, 0.7), transparent),
+            radial-gradient(2px 2px at 280px 20px, rgba(100, 255, 218, 0.6), transparent)
+          `,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '300px 150px',
+          animation: 'starfield 30s linear infinite',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      {/* Main content */}
+      <div style={{ position: 'relative', zIndex: 10 }}>
+        <StartupList />
+      </div>
+
+      <style jsx>{`
+        @keyframes starfield {
+          0% {
+            transform: translateY(0px) translateX(0px);
+          }
+          100% {
+            transform: translateY(-150px) translateX(-300px);
+          }
+        }
+      `}</style>
+    </main>
   );
 }
