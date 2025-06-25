@@ -43,7 +43,7 @@ export interface VentureAgentStrategies {
 }
 
 export interface VentureAgentRecommendation {
-  best_strategy: 'conservative' | 'growth' | 'balanced';
+  best_strategy: 'conservative' | 'growth' | 'balanced' | 'none';
   reasoning: string;
   overall_confidence: number;
 }
@@ -77,7 +77,7 @@ export const VentureAgentStrategiesSchema = z.object({
 });
 
 export const VentureAgentRecommendationSchema = z.object({
-  best_strategy: z.enum(['conservative', 'growth', 'balanced']),
+  best_strategy: z.enum(['conservative', 'growth', 'balanced', 'none']),
   reasoning: z.string().min(1),
   overall_confidence: z.number().min(0).max(100),
 });
@@ -154,9 +154,111 @@ export interface GeminiGenerateResponse {
   };
 }
 
+// OpenRouter API types
+export interface OpenRouterMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface OpenRouterRequest {
+  model: string;
+  messages: OpenRouterMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+}
+
+export interface OpenRouterChoice {
+  index: number;
+  message: {
+    role: string;
+    content: string;
+  };
+  finish_reason: string;
+}
+
+export interface OpenRouterResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: OpenRouterChoice[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  error?: {
+    message: string;
+    type: string;
+    code?: string;
+  };
+}
+
+// AI Provider types
+export type AIProvider = 'gemini' | 'openrouter';
+
+export interface AIProviderConfig {
+  provider: AIProvider;
+  model: string;
+  apiKey: string;
+}
+
 // Constants
 export const AI_TIMEOUT = 120000; // 2 minutes
 export const MAX_PROMPT_LENGTH = 50000; // 50k characters
+
+// Model configurations
+export const AI_MODELS = {
+  // Google Gemini (Free via direct API)
+  GEMINI_FLASH: 'gemini-2.0-flash',
+
+  // OpenRouter models
+  MINIMAX_01: 'minimax/minimax-01', // $0.20/M input, $1.10/M output
+  MISTRAL_SMALL_32: 'mistralai/mistral-small-3.2-24b-instruct:free', // Free
+  GEMINI_25_FLASH: 'google/gemini-2.5-flash', // $0.30/M input, $2.50/M output, $1.238/K input imgs
+  GROK_3: 'x-ai/grok-3', // $3/M input, $15/M output
+  DEEPSEEK_R1_0528: 'deepseek/deepseek-r1-0528:free', // Free
+  CLAUDE_SONNET_4: 'anthropic/claude-sonnet-4', // $3/M input, $15/M output, $4.80/K input imgs
+  PHI_4_REASONING_PLUS: 'microsoft/phi-4-reasoning-plus:free', // Free
+  QWEN3_30B_A3B: 'qwen/qwen3-30b-a3b:free', // Free
+  MAI_DS_R1: 'microsoft/mai-ds-r1:free', // Free
+  O4_MINI_HIGH: 'openai/o4-mini-high', // $1.10/M input, $4.40/M output, $0.842/K input imgs
+} as const;
+
+// Model display names for UI
+export const MODEL_DISPLAY_NAMES = {
+  [AI_MODELS.GEMINI_FLASH]: 'Gemini 2.0 Flash (Google)',
+  [AI_MODELS.MINIMAX_01]: 'MiniMax-01 (OpenRouter)',
+  [AI_MODELS.MISTRAL_SMALL_32]: 'Mistral Small 3.2 24B (OpenRouter)',
+  [AI_MODELS.GEMINI_25_FLASH]: 'Gemini 2.5 Flash (OpenRouter)',
+  [AI_MODELS.GROK_3]: 'Grok 3 (OpenRouter)',
+  [AI_MODELS.DEEPSEEK_R1_0528]: 'DeepSeek R1 0528 (OpenRouter)',
+  [AI_MODELS.CLAUDE_SONNET_4]: 'Claude Sonnet 4 (OpenRouter)',
+  [AI_MODELS.PHI_4_REASONING_PLUS]: 'Phi 4 Reasoning Plus (OpenRouter)',
+  [AI_MODELS.QWEN3_30B_A3B]: 'Qwen3 30B A3B (OpenRouter)',
+  [AI_MODELS.MAI_DS_R1]: 'MAI DS R1 (OpenRouter)',
+  [AI_MODELS.O4_MINI_HIGH]: 'o4 Mini High (OpenRouter)',
+} as const;
+
+// Available models for user selection
+export const AVAILABLE_MODELS = [
+  AI_MODELS.GEMINI_FLASH,
+  AI_MODELS.MINIMAX_01,
+  AI_MODELS.MISTRAL_SMALL_32,
+  AI_MODELS.GEMINI_25_FLASH,
+  AI_MODELS.GROK_3,
+  AI_MODELS.DEEPSEEK_R1_0528,
+  AI_MODELS.CLAUDE_SONNET_4,
+  AI_MODELS.PHI_4_REASONING_PLUS,
+  AI_MODELS.QWEN3_30B_A3B,
+  AI_MODELS.MAI_DS_R1,
+  AI_MODELS.O4_MINI_HIGH,
+] as const;
+
+export type AvailableModel = (typeof AVAILABLE_MODELS)[number];
 
 // Validation error details
 export interface ValidationError {

@@ -52,44 +52,100 @@ export function isRetryableValidationError(error: unknown): boolean {
 export function parseAndValidateAIResponse(responseText: string): VentureAgentAnalysisResult {
   let parsed: unknown;
 
+  // Агрессивная очистка ответа
+  const cleanResponse = (text: string): string => {
+    // Удаляем все до первой открывающей скобки и всё после последней закрывающей
+    const startIndex = text.indexOf('{');
+    const lastIndex = text.lastIndexOf('}');
+
+    if (startIndex === -1 || lastIndex === -1 || lastIndex <= startIndex) {
+      throw new Error('No valid JSON object found in response');
+    }
+
+    let cleanedText = text.slice(startIndex, lastIndex + 1);
+
+    // Удаляем возможные markdown блоки
+    cleanedText = cleanedText.replace(/```(?:json)?\s*|\s*```/g, '');
+
+    // Удаляем возможные комментарии и лишние символы
+    cleanedText = cleanedText.replace(/\/\/.*$/gm, ''); // однострочные комментарии
+    cleanedText = cleanedText.replace(/\/\*[\s\S]*?\*\//g, ''); // многострочные комментарии
+
+    // Удаляем лишние пробелы и переносы
+    cleanedText = cleanedText.trim();
+
+    return cleanedText;
+  };
+
   try {
-    // First try to parse as JSON
+    // Пытаемся распарсить оригинальный ответ
     parsed = JSON.parse(responseText);
   } catch (parseError) {
-    // Try to extract JSON from markdown code blocks or other formats
-    const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-    if (jsonMatch) {
-      try {
-        parsed = JSON.parse(jsonMatch[1]);
-      } catch {
-        throw new Error(
-          `Invalid JSON in response: ${parseError instanceof Error ? parseError.message : 'Parse failed'}`,
-        );
-      }
-    } else {
-      // Try to find JSON object in the text
-      const startIndex = responseText.indexOf('{');
-      const lastIndex = responseText.lastIndexOf('}');
+    console.warn('Initial JSON parse failed, attempting cleanup...', {
+      error: parseError instanceof Error ? parseError.message : 'Unknown parse error',
+      responseLength: responseText.length,
+      responsePreview: responseText.substring(0, 200) + '...',
+    });
 
-      if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
+    try {
+      // Очищаем ответ и пытаемся снова
+      const cleanedText = cleanResponse(responseText);
+      console.log('Attempting to parse cleaned response:', {
+        cleanedLength: cleanedText.length,
+        cleanedPreview: cleanedText.substring(0, 200) + '...',
+      });
+
+      parsed = JSON.parse(cleanedText);
+    } catch (cleanupError) {
+      // Последняя попытка - извлекаем JSON из markdown блоков
+      console.warn('Cleanup parse failed, trying markdown extraction...', {
+        error: cleanupError instanceof Error ? cleanupError.message : 'Unknown cleanup error',
+      });
+
+      const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
         try {
-          parsed = JSON.parse(responseText.slice(startIndex, lastIndex + 1));
-        } catch {
+          const extractedJson = jsonMatch[1].trim();
+          console.log('Attempting to parse extracted JSON from markdown:', {
+            extractedLength: extractedJson.length,
+            extractedPreview: extractedJson.substring(0, 200) + '...',
+          });
+
+          parsed = JSON.parse(extractedJson);
+        } catch (extractError) {
+          console.error('All JSON parsing attempts failed:', {
+            original: parseError instanceof Error ? parseError.message : 'Unknown',
+            cleanup: cleanupError instanceof Error ? cleanupError.message : 'Unknown',
+            extract: extractError instanceof Error ? extractError.message : 'Unknown',
+            responseText: responseText.substring(0, 500) + (responseText.length > 500 ? '...' : ''),
+          });
+
           throw new Error(
-            `Invalid JSON in response: ${parseError instanceof Error ? parseError.message : 'Parse failed'}`,
+            `Failed to parse JSON after all attempts. Original error: ${parseError instanceof Error ? parseError.message : 'Parse failed'}. Response preview: ${responseText.substring(0, 200)}...`,
           );
         }
       } else {
+        console.error('No JSON found in any format:', {
+          responseText: responseText.substring(0, 500) + (responseText.length > 500 ? '...' : ''),
+        });
+
         throw new Error(
-          `No valid JSON found in response: ${parseError instanceof Error ? parseError.message : 'Parse failed'}`,
+          `No valid JSON found in response after all parsing attempts. Response preview: ${responseText.substring(0, 200)}...`,
         );
       }
     }
   }
 
-  // Validate against schema
+  // Проверяем что получили объект
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error(`Parsed result is not an object: ${typeof parsed}`);
+  }
+
+  // Валидируем против схемы
   try {
-    return VentureAgentAnalysisResultSchema.parse(parsed);
+    const result = VentureAgentAnalysisResultSchema.parse(parsed);
+    console.log('Successfully parsed and validated AI response');
+    return result;
   } catch (validationError) {
     const errors: ValidationError[] = [];
 
@@ -102,6 +158,11 @@ export function parseAndValidateAIResponse(responseText: string): VentureAgentAn
         });
       }
     }
+
+    console.error('Validation failed:', {
+      errors,
+      parsedObject: parsed,
+    });
 
     throw new Error(`Validation failed: ${errors.map(e => `${e.field}: ${e.message}`).join(', ')}`);
   }

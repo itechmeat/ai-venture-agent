@@ -92,8 +92,22 @@ FINAL RECOMMENDATION:
 - Provide reasoning for your recommendation
 - Give overall confidence score for the recommendation
 
-RESPONSE FORMAT:
-Respond ONLY with valid JSON. No additional text, explanations, or formatting outside the JSON:
+=== CRITICAL OUTPUT FORMATTING RULES ===
+
+WARNING: FAILURE TO FOLLOW THESE RULES WILL RESULT IN SYSTEM ERROR
+
+1. RESPOND WITH ONLY JSON - NO ADDITIONAL TEXT WHATSOEVER
+2. DO NOT include any text before the JSON object
+3. DO NOT include any text after the JSON object  
+4. DO NOT wrap the JSON in markdown code blocks (\`\`\`)
+5. DO NOT include any explanations, comments, or notes
+6. DO NOT use any formatting like "Here's the analysis:" or "Response:"
+7. DO NOT add newlines or whitespace before the opening brace {
+8. DO NOT add any content after the closing brace }
+9. ENSURE the JSON is valid and can be parsed by JSON.parse()
+10. ENSURE all required fields are present and correctly named
+
+THE ENTIRE RESPONSE MUST BE EXACTLY THIS JSON STRUCTURE AND NOTHING ELSE:
 
 {
   "unified_analysis": {
@@ -129,6 +143,19 @@ Respond ONLY with valid JSON. No additional text, explanations, or formatting ou
     "overall_confidence": 0-100
   }
 }
+
+VALIDATION CHECKLIST BEFORE RESPONDING:
+✓ Response starts with { and ends with }
+✓ No text before or after the JSON
+✓ All string values are properly quoted
+✓ All numbers are valid integers (0-100 for scores, 0-100 for percentages)
+✓ Decision values are exactly "INVEST" or "PASS" (case-sensitive)
+✓ Best_strategy value is exactly one of: "conservative", "growth", "balanced", "none"
+✓ No trailing commas
+✓ No comments or additional formatting
+✓ JSON is minified and parseable
+
+REMEMBER: The JSON parser is EXTREMELY strict. Any deviation from valid JSON format will cause a system error.
 
 IMPORTANT GUIDELINES:
 - Base decisions on actual project data provided
@@ -180,4 +207,67 @@ export function getPromptWithVariables(key: PromptKey, variables: Record<string,
   });
 
   return prompt;
+}
+
+/**
+ * Apply additional JSON enforcement for problematic AI models
+ */
+export function enforceStrictJSONForModel(prompt: string, modelName?: string): string {
+  // Модели, которые часто возвращают невалидный JSON
+  const problematicModels = [
+    'grok-3',
+    'minimax-01',
+    'phi-4-reasoning-plus',
+    'qwen3-30b-a3b',
+    'mai-ds-r1',
+    'deepseek-r1-0528',
+  ];
+
+  const isProblematicModel =
+    modelName && problematicModels.some(model => modelName.toLowerCase().includes(model));
+
+  if (!isProblematicModel) {
+    return prompt; // Возвращаем оригинальный промпт для надежных моделей
+  }
+
+  // Для проблемных моделей добавляем дополнительные ограничения
+  const additionalEnforcement = `
+
+=== EXTREME JSON ENFORCEMENT FOR ${modelName?.toUpperCase()} ===
+
+ATTENTION: This model has been identified as prone to formatting errors.
+FOLLOW THESE RULES EXACTLY OR THE SYSTEM WILL CRASH:
+
+🚨 RULE 1: Your response MUST start with { and end with }
+🚨 RULE 2: Do NOT add ANY text before the opening brace {
+🚨 RULE 3: Do NOT add ANY text after the closing brace }
+🚨 RULE 4: Do NOT use markdown formatting like \`\`\`json
+🚨 RULE 5: Do NOT explain your response
+🚨 RULE 6: Do NOT add comments in the JSON
+🚨 RULE 7: Test your JSON mentally before responding
+🚨 RULE 8: All strings MUST be in "double quotes"
+🚨 RULE 9: Numbers must be integers (no floats)
+🚨 RULE 10: No trailing commas anywhere
+
+VERIFICATION STEPS:
+1. Write your JSON response
+2. Check it starts with { 
+3. Check it ends with }
+4. Count opening and closing braces - they must match
+5. Verify all strings are quoted
+6. Ensure no trailing commas
+7. Only then submit your response
+
+EXAMPLE OF WHAT NOT TO DO:
+❌ "Here is my analysis: { ... }"
+❌ \`\`\`json { ... } \`\`\`
+❌ { ... } // This is my response
+❌ Let me analyze this: { ... }
+
+EXAMPLE OF CORRECT FORMAT:
+✅ {"unified_analysis":{"milestone_execution":"..."},"strategies":{...},"recommendation":{...}}
+
+REMEMBER: The JSON parser is ZERO-TOLERANCE. One extra character will break everything.`;
+
+  return prompt + additionalEnforcement;
 }

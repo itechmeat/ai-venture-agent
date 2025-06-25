@@ -4,7 +4,13 @@ import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { LoadingSpinner } from '@/components';
 import { Startup, FullStartupAPIResponse, StartupListResponse } from '@/types';
-import { VentureAgentAnalysisResult } from '@/types/ai';
+import {
+  VentureAgentAnalysisResult,
+  AVAILABLE_MODELS,
+  MODEL_DISPLAY_NAMES,
+  AvailableModel,
+  AI_MODELS,
+} from '@/types/ai';
 import { APIClient } from '@/utils/api';
 import styles from './StartupList.module.scss';
 
@@ -44,6 +50,7 @@ export function StartupList({ className }: StartupListProps) {
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number>(-1);
   const [error, setError] = useState<string | null>(null);
   const [expandedDetailedAnalysis, setExpandedDetailedAnalysis] = useState<Set<string>>(new Set());
+  const [selectedModel, setSelectedModel] = useState<AvailableModel>(AI_MODELS.GEMINI_FLASH);
 
   const toggleDetailedAnalysis = useCallback((startupId: string) => {
     setExpandedDetailedAnalysis(prev => {
@@ -152,6 +159,7 @@ export function StartupList({ className }: StartupListProps) {
             metadata: { processingTime: number; attempts: number; model: string };
           }>('make-decision', {
             projectData: fullData,
+            selectedModel,
           });
 
           if (response.success && response.data) {
@@ -184,7 +192,7 @@ export function StartupList({ className }: StartupListProps) {
 
       return null;
     },
-    [updateStartupData],
+    [updateStartupData, selectedModel],
   );
 
   const retryAIAnalysis = useCallback(
@@ -212,6 +220,7 @@ export function StartupList({ className }: StartupListProps) {
           metadata: { processingTime: number; attempts: number; model: string };
         }>('make-decision', {
           projectData: startupData.fullData,
+          selectedModel,
         });
 
         if (response.success && response.data) {
@@ -233,7 +242,7 @@ export function StartupList({ className }: StartupListProps) {
         });
       }
     },
-    [startupsWithFullData, updateStartupData],
+    [startupsWithFullData, updateStartupData, selectedModel],
   );
 
   const processStartupSequentially = useCallback(
@@ -303,6 +312,22 @@ export function StartupList({ className }: StartupListProps) {
       <div className={`${styles.container} ${styles.centered} ${className || ''}`}>
         <div className={styles.header}>
           <h2>AI Venture Agent</h2>
+          <div className={styles.modelSelector}>
+            <label htmlFor="model-select">AI Model:</label>
+            <select
+              id="model-select"
+              value={selectedModel}
+              onChange={e => setSelectedModel(e.target.value as AvailableModel)}
+              disabled={isProcessing}
+              className={styles.modelSelect}
+            >
+              {AVAILABLE_MODELS.map(model => (
+                <option key={model} value={model}>
+                  {MODEL_DISPLAY_NAMES[model]}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={analyzeStartups}
             disabled={isProcessing}
@@ -331,6 +356,22 @@ export function StartupList({ className }: StartupListProps) {
       <div className={`${styles.container} ${styles.centered} ${className || ''}`}>
         <div className={styles.header}>
           <h2>AI Venture Agent</h2>
+          <div className={styles.modelSelector}>
+            <label htmlFor="model-select">AI Model:</label>
+            <select
+              id="model-select"
+              value={selectedModel}
+              onChange={e => setSelectedModel(e.target.value as AvailableModel)}
+              disabled={isProcessing}
+              className={styles.modelSelect}
+            >
+              {AVAILABLE_MODELS.map(model => (
+                <option key={model} value={model}>
+                  {MODEL_DISPLAY_NAMES[model]}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={analyzeStartups}
             disabled={isProcessing}
@@ -349,6 +390,22 @@ export function StartupList({ className }: StartupListProps) {
       <div className={`${styles.container} ${styles.centered} ${className || ''}`}>
         <div className={styles.header}>
           <h2>AI Venture Agent</h2>
+          <div className={styles.modelSelector}>
+            <label htmlFor="model-select">AI Model:</label>
+            <select
+              id="model-select"
+              value={selectedModel}
+              onChange={e => setSelectedModel(e.target.value as AvailableModel)}
+              disabled={isProcessing}
+              className={styles.modelSelect}
+            >
+              {AVAILABLE_MODELS.map(model => (
+                <option key={model} value={model}>
+                  {MODEL_DISPLAY_NAMES[model]}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={analyzeStartups}
             disabled={isProcessing}
@@ -371,6 +428,22 @@ export function StartupList({ className }: StartupListProps) {
             Processing: {currentProcessingIndex + 1} / {startups.length}
           </div>
         )}
+        <div className={styles.modelSelector}>
+          <label htmlFor="model-select">AI Model:</label>
+          <select
+            id="model-select"
+            value={selectedModel}
+            onChange={e => setSelectedModel(e.target.value as AvailableModel)}
+            disabled={isProcessing}
+            className={styles.modelSelect}
+          >
+            {AVAILABLE_MODELS.map(model => (
+              <option key={model} value={model}>
+                {MODEL_DISPLAY_NAMES[model]}
+              </option>
+            ))}
+          </select>
+        </div>
         <button onClick={analyzeStartups} disabled={isProcessing} className={styles.processButton}>
           {isProcessing ? 'Analyzing...' : 'Re-analyze Startups'}
         </button>
@@ -491,7 +564,9 @@ export function StartupList({ className }: StartupListProps) {
                               : strategyName === 'growth'
                                 ? '🚀 Aggressive'
                                 : '⚖️ Balanced'}
-                            {strategyName === aiAnalysis.recommendation.best_strategy && ' ⭐'}
+                            {aiAnalysis.recommendation.best_strategy !== 'none' &&
+                              strategyName === aiAnalysis.recommendation.best_strategy &&
+                              ' ⭐'}
                           </span>
                           <span
                             className={`${styles.decision} ${styles[strategy.decision.toLowerCase()]}`}
@@ -517,10 +592,21 @@ export function StartupList({ className }: StartupListProps) {
                   <div className={styles.recommendation}>
                     <h5>💡 Recommendation</h5>
                     <div className={styles.bestStrategy}>
-                      Best Strategy: <strong>{aiAnalysis.recommendation.best_strategy}</strong>
-                      <span className={styles.confidence}>
-                        (confidence: {aiAnalysis.recommendation.overall_confidence}%)
-                      </span>
+                      {aiAnalysis.recommendation.best_strategy === 'none' ? (
+                        <>
+                          Recommendation: <strong>❌ DO NOT INVEST</strong>
+                          <span className={styles.confidence}>
+                            (confidence: {aiAnalysis.recommendation.overall_confidence}%)
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          Best Strategy: <strong>{aiAnalysis.recommendation.best_strategy}</strong>
+                          <span className={styles.confidence}>
+                            (confidence: {aiAnalysis.recommendation.overall_confidence}%)
+                          </span>
+                        </>
+                      )}
                     </div>
                     <p className={styles.reasoning}>{aiAnalysis.recommendation.reasoning}</p>
                   </div>
