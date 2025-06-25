@@ -691,3 +691,316 @@
     padding: 1rem; // Reduced from 2rem
   }
 }
+
+/* NEW STYLES FOR AI ANALYSIS */
+
+.progressInfo {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.5rem 1rem;
+  background: rgba(100, 255, 218, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(100, 255, 218, 0.2);
+}
+
+/* Status Section */
+.statusSection {
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.statusText {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.statusIcon {
+  font-size: 1.25rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Status-specific styles - removed backgrounds and borders */
+.status_idle .statusText {
+  color: rgba(255, 193, 7, 0.9);
+}
+
+.status_fetching .statusText,
+.status_processing .statusText {
+  color: rgba(0, 123, 255, 0.9);
+}
+
+.status_success .statusText {
+  color: rgba(40, 167, 69, 0.9);
+}
+
+.status_error .statusText {
+  color: rgba(220, 53, 69, 0.9);
+}
+
+.retryButton {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.2);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ee5a24 0%, #ff6b6b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.aiAnalysisSection {
+  margin-top: 1.5rem;
+
+  h4 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #64ffda;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    &::before {
+      content: '🤖';
+      font-size: 1.5rem;
+    }
+  }
+
+  h5 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.recommendation {
+  margin-bottom: 2rem;
+
+  .bestStrategy {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+    color: rgba(255, 255, 255, 0.95);
+
+    strong {
+      color: #7c4dff;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+  }
+
+  .confidence {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    margin-left: 0.5rem;
+  }
+
+  .reasoning {
+    margin: 0.75rem 0 0 0;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    font-size: 0.9rem;
+  }
+}
+
+.strategies {
+  margin-bottom: 2rem;
+}
+
+.strategy {
+  margin-bottom: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+
+  &.strategy_invest {
+    background: rgba(40, 167, 69, 0.1);
+    border-color: rgba(40, 167, 69, 0.3);
+  }
+
+  &.strategy_pass {
+    background: rgba(220, 53, 69, 0.1);
+    border-color: rgba(220, 53, 69, 0.3);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.strategyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.strategyName {
+  font-weight: 600;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.decision {
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &.invest {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.4);
+  }
+
+  &.pass {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.4);
+  }
+}
+
+.strategyDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .percentage,
+  .confidence {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.8);
+
+    strong {
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+  }
+
+  .reasoning {
+    margin-top: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+    font-size: 0.875rem;
+  }
+}
+
+.detailedAnalysisSection {
+  margin-top: 1rem;
+}
+
+.detailedAnalysisHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #64ffda;
+  }
+}
+
+.accordionIcon {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.2s ease;
+
+  .detailedAnalysisHeader:hover & {
+    color: #64ffda;
+  }
+}
+
+.analysisGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.analysisItem {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #64ffda;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .strategy {
+    padding: 1rem;
+  }
+
+  .strategyHeader {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .analysisGrid {
+    grid-template-columns: 1fr;
+  }
+}
