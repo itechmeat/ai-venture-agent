@@ -1,0 +1,83 @@
+[
+  {
+    "name": "Junior Manager",
+    "slug": "junior-manager",
+    "fund": "Noname Fund",
+    "methodology": "Data-driven empirical analysis using large datasets of venture deals, quantitative modeling of investment structures and their impact on company valuations",
+    "expertise": "Venture capital structure analysis, private equity economics, startup financing cycles, academic research on VC behavior patterns",
+    "focus": "Early to growth stage startups, deal structure optimization, systematic approach to venture investing based on historical data analysis",
+    "price": 0
+  },
+  {
+    "name": "Ilya Strebulaev",
+    "slug": "ilya-strebulaev",
+    "fund": "Stanford Graduate School of Business",
+    "methodology": "Data-driven empirical analysis using large datasets of venture deals, quantitative modeling of investment structures and their impact on company valuations",
+    "expertise": "Venture capital structure analysis, private equity economics, startup financing cycles, academic research on VC behavior patterns",
+    "focus": "Early to growth stage startups, deal structure optimization, systematic approach to venture investing based on historical data analysis",
+    "price": 0.9
+  },
+  {
+    "name": "Bill Gurley",
+    "slug": "bill-gurley",
+    "fund": "Benchmark",
+    "methodology": "Deep fundamental analysis focusing on unit economics, sustainable competitive advantages, and long-term market dynamics with detailed financial modeling",
+    "expertise": "Marketplace businesses, network effects, sustainable business models, operational excellence in high-growth companies",
+    "focus": "Late seed to Series B companies, particularly marketplaces and network-effect businesses with strong unit economics",
+    "price": 1.2
+  },
+  {
+    "name": "Reid Hoffman",
+    "slug": "reid-hoffman",
+    "fund": "Greylock Partners",
+    "methodology": "Blitzscaling framework, network effects analysis, platform business model evaluation, systematic approach to rapid scaling",
+    "expertise": "Network effects, platform businesses, marketplace dynamics, global scaling strategies, product-market fit optimization",
+    "focus": "Platform and network-effect businesses from Series A onwards, companies with potential for global dominance",
+    "price": 0.7
+  },
+  {
+    "name": "Peter Thiel",
+    "slug": "peter-thiel",
+    "fund": "Founders Fund",
+    "methodology": "Contrarian analysis seeking monopolistic advantages, zero-to-one innovation assessment, long-term technology trend evaluation",
+    "expertise": "Deep technology, breakthrough innovations, contrarian market analysis, monopoly business model development",
+    "focus": "Early-stage deep tech companies with potential for creating new markets and achieving monopolistic positions",
+    "price": 1.3
+  },
+  {
+    "name": "Marc Andreessen",
+    "slug": "marc-andreessen",
+    "fund": "Andreessen Horowitz (a16z)",
+    "methodology": "Software-eating-world thesis, technical founder evaluation, product-market fit assessment through technology lens",
+    "expertise": "Software infrastructure, developer tools, enterprise software, technical team assessment, product development",
+    "focus": "Technical founders building software solutions from seed to growth stage, particularly infrastructure and developer-focused companies",
+    "price": 1.5
+  },
+  {
+    "name": "Fred Wilson",
+    "slug": "fred-wilson",
+    "fund": "Union Square Ventures",
+    "methodology": "Thesis-driven investing with focus on decentralized networks, systematic evaluation of network-centric business models",
+    "expertise": "Network effects, decentralized systems, blockchain technology, community-driven businesses, platform economics",
+    "focus": "Network-effect businesses and decentralized platforms from seed to Series A, with emphasis on community and network growth",
+    "price": 1.6
+  },
+  {
+    "name": "David Skok",
+    "slug": "david-skok",
+    "fund": "Matrix Partners",
+    "methodology": "Quantitative SaaS metrics analysis, mathematical modeling of customer acquisition and retention, systematic LTV/CAC optimization",
+    "expertise": "SaaS metrics optimization, customer acquisition cost analysis, lifetime value modeling, B2B sales process",
+    "focus": "B2B SaaS companies with focus on metrics-driven growth from early revenue through scaling phases",
+    "price": 0.8
+  },
+  {
+    "name": "Andy Rachleff",
+    "slug": "andy-rachleff",
+    "fund": "Wealthfront, Benchmark",
+    "methodology": "Product-market fit framework, systematic evaluation of customer demand signals, quantitative approach to market validation",
+    "expertise": "Product-market fit assessment, early-stage market validation, fintech innovation, systematic startup methodology",
+    "focus": "Early-stage startups seeking product-market fit, particularly in fintech and consumer-facing products with strong market signals",
+    "price": 1.0
+  }
+]

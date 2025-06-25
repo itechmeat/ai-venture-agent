@@ -1,14 +1,5 @@
 import { NextResponse } from 'next/server';
-
-interface APIResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  metadata?: {
-    processingTime: number;
-    [key: string]: unknown;
-  };
-}
+import type { APIResponse } from '@/lib/api/base-handler';
 
 export async function GET(
   request: Request,

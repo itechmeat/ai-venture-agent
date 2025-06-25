@@ -1,15 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { StartupListResponse } from '@/types';
-
-interface APIResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  metadata?: {
-    processingTime: number;
-    [key: string]: unknown;
-  };
-}
+import type { APIResponse } from '@/lib/api/base-handler';
 
 export async function GET(): Promise<NextResponse<APIResponse<StartupListResponse['data']>>> {
   const startTime = Date.now();

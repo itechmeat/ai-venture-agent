@@ -1,0 +1,35 @@
+.summary {
+  padding: 1rem;
+  background: rgba(100, 255, 218, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(100, 255, 218, 0.3);
+  margin: 1rem 0;
+}
+
+.summaryContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.selectedCount {
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.totalCost {
+  color: #64ffda;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.noSelection {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  font-style: italic;
+  width: 100%;
+  text-align: center;
+}

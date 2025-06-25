@@ -2,17 +2,14 @@
 
 import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { LoadingSpinner } from '@/components';
-import { Startup, FullStartupAPIResponse, StartupListResponse } from '@/types';
-import {
-  VentureAgentAnalysisResult,
-  AVAILABLE_MODELS,
-  MODEL_DISPLAY_NAMES,
-  AvailableModel,
-  AI_MODELS,
-} from '@/types/ai';
+import { LoadingSpinner, ExpertSelector, ExpertSummary } from '@/components';
 import { APIClient } from '@/utils/api';
+import type { APIResponse } from '@/lib/api/base-handler';
 import styles from './StartupList.module.scss';
+import investmentExperts from '@/data/investment_experts.json';
+import type { Startup, FullStartupAPIResponse, StartupListResponse } from '@/types';
+import type { MultiExpertAnalysisResult, AvailableModel } from '@/types/ai';
+import { AI_MODELS, AVAILABLE_MODELS, MODEL_DISPLAY_NAMES } from '@/types/ai';
 
 interface StartupListProps {
   className?: string;
@@ -24,22 +21,13 @@ type ProcessingStatus = 'idle' | 'processing' | 'success' | 'error';
 interface StartupWithFullData {
   startup: Startup;
   fullData?: FullStartupAPIResponse['data']['data'];
-  aiAnalysis?: VentureAgentAnalysisResult;
+  aiAnalysis?: MultiExpertAnalysisResult;
+  activeExpertSlug?: string;
   dataFetchStatus: DataFetchStatus;
   dataFetchMessage: string;
   processingStatus: ProcessingStatus;
   processingMessage: string;
   aiAttempts?: number;
-}
-
-interface APIResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  metadata?: {
-    processingTime: number;
-    totalProjects: number;
-  };
 }
 
 export function StartupList({ className }: StartupListProps) {
@@ -51,6 +39,7 @@ export function StartupList({ className }: StartupListProps) {
   const [error, setError] = useState<string | null>(null);
   const [expandedDetailedAnalysis, setExpandedDetailedAnalysis] = useState<Set<string>>(new Set());
   const [selectedModel, setSelectedModel] = useState<AvailableModel>(AI_MODELS.GEMINI_FLASH);
+  const [selectedExperts, setSelectedExperts] = useState<string[]>(['junior-manager']);
 
   const toggleDetailedAnalysis = useCallback((startupId: string) => {
     setExpandedDetailedAnalysis(prev => {
@@ -71,6 +60,13 @@ export function StartupList({ className }: StartupListProps) {
       );
     },
     [],
+  );
+
+  const switchActiveExpert = useCallback(
+    (startupId: string, expertSlug: string) => {
+      updateStartupData(startupId, { activeExpertSlug: expertSlug });
+    },
+    [updateStartupData],
   );
 
   const fetchStartups = useCallback(async () => {
@@ -155,18 +151,21 @@ export function StartupList({ className }: StartupListProps) {
 
         try {
           const response = await APIClient.post<{
-            analysis: VentureAgentAnalysisResult;
+            analysis: MultiExpertAnalysisResult;
             metadata: { processingTime: number; attempts: number; model: string };
           }>('make-decision', {
             projectData: fullData,
             selectedModel,
+            selectedExperts,
           });
 
           if (response.success && response.data) {
+            const firstExpertSlug = response.data.analysis.expert_analyses[0]?.expert_slug;
             updateStartupData(startupId, {
               processingStatus: 'success',
               processingMessage: 'Data processed successfully',
               aiAnalysis: response.data.analysis,
+              activeExpertSlug: firstExpertSlug, // устанавливаем первого эксперта как активного
               aiAttempts: attempts,
             });
             return response.data.analysis;
@@ -192,7 +191,7 @@ export function StartupList({ className }: StartupListProps) {
 
       return null;
     },
-    [updateStartupData, selectedModel],
+    [updateStartupData, selectedModel, selectedExperts],
   );
 
   const retryAIAnalysis = useCallback(
@@ -216,18 +215,21 @@ export function StartupList({ className }: StartupListProps) {
 
       try {
         const response = await APIClient.post<{
-          analysis: VentureAgentAnalysisResult;
+          analysis: MultiExpertAnalysisResult;
           metadata: { processingTime: number; attempts: number; model: string };
         }>('make-decision', {
           projectData: startupData.fullData,
           selectedModel,
+          selectedExperts,
         });
 
         if (response.success && response.data) {
+          const firstExpertSlug = response.data.analysis.expert_analyses[0]?.expert_slug;
           updateStartupData(startupId, {
             processingStatus: 'success',
             processingMessage: 'Data processed successfully',
             aiAnalysis: response.data.analysis,
+            activeExpertSlug: firstExpertSlug,
             aiAttempts: newAttemptCount,
           });
         } else {
@@ -242,7 +244,7 @@ export function StartupList({ className }: StartupListProps) {
         });
       }
     },
-    [startupsWithFullData, updateStartupData, selectedModel],
+    [startupsWithFullData, updateStartupData, selectedModel, selectedExperts],
   );
 
   const processStartupSequentially = useCallback(
@@ -330,12 +332,24 @@ export function StartupList({ className }: StartupListProps) {
           </div>
           <button
             onClick={analyzeStartups}
-            disabled={isProcessing}
+            disabled={isProcessing || selectedExperts.length === 0}
             className={styles.processButton}
           >
             {isProcessing ? 'Analyzing...' : 'Analyze Startups'}
           </button>
         </div>
+
+        {!isProcessing && (
+          <>
+            <ExpertSummary selectedExperts={selectedExperts} />
+
+            <ExpertSelector
+              selectedExperts={selectedExperts}
+              onExpertsChange={setSelectedExperts}
+              disabled={isProcessing}
+            />
+          </>
+        )}
       </div>
     );
   }
@@ -374,12 +388,25 @@ export function StartupList({ className }: StartupListProps) {
           </div>
           <button
             onClick={analyzeStartups}
-            disabled={isProcessing}
+            disabled={isProcessing || selectedExperts.length === 0}
             className={styles.processButton}
           >
             {isProcessing ? 'Analyzing...' : 'Analyze Startups'}
           </button>
         </div>
+
+        {!isProcessing && (
+          <>
+            <ExpertSummary selectedExperts={selectedExperts} />
+
+            <ExpertSelector
+              selectedExperts={selectedExperts}
+              onExpertsChange={setSelectedExperts}
+              disabled={isProcessing}
+            />
+          </>
+        )}
+
         <div className={styles.error}>Error loading startups: {error}</div>
       </div>
     );
@@ -408,12 +435,25 @@ export function StartupList({ className }: StartupListProps) {
           </div>
           <button
             onClick={analyzeStartups}
-            disabled={isProcessing}
+            disabled={isProcessing || selectedExperts.length === 0}
             className={styles.processButton}
           >
             {isProcessing ? 'Analyzing...' : 'Analyze Startups'}
           </button>
         </div>
+
+        {!isProcessing && (
+          <>
+            <ExpertSummary selectedExperts={selectedExperts} />
+
+            <ExpertSelector
+              selectedExperts={selectedExperts}
+              onExpertsChange={setSelectedExperts}
+              disabled={isProcessing}
+            />
+          </>
+        )}
+
         <div className={styles.empty}>No startups found</div>
       </div>
     );
@@ -444,10 +484,26 @@ export function StartupList({ className }: StartupListProps) {
             ))}
           </select>
         </div>
-        <button onClick={analyzeStartups} disabled={isProcessing} className={styles.processButton}>
+        <button
+          onClick={analyzeStartups}
+          disabled={isProcessing || selectedExperts.length === 0}
+          className={styles.processButton}
+        >
           {isProcessing ? 'Analyzing...' : 'Re-analyze Startups'}
         </button>
       </div>
+
+      {!isProcessing && !startupsWithFullData.some(s => s.aiAnalysis) && (
+        <>
+          <ExpertSummary selectedExperts={selectedExperts} />
+
+          <ExpertSelector
+            selectedExperts={selectedExperts}
+            onExpertsChange={setSelectedExperts}
+            disabled={isProcessing}
+          />
+        </>
+      )}
 
       <div className={styles.grid}>
         {startupsWithFullData.map(
@@ -455,202 +511,296 @@ export function StartupList({ className }: StartupListProps) {
             startup,
             fullData,
             aiAnalysis,
+            activeExpertSlug,
             dataFetchStatus,
             dataFetchMessage,
             processingStatus,
             processingMessage,
-          }) => (
-            <div key={startup.id} className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.logoSection}>
-                  {startup.public_snapshot.logo_url ? (
-                    <Image
-                      src={startup.public_snapshot.logo_url}
-                      alt={`${startup.public_snapshot.name || 'Startup'} logo`}
-                      width={48}
-                      height={48}
-                      className={styles.logo}
-                    />
-                  ) : (
-                    <div className={styles.logoPlaceholder}>
-                      {(startup.public_snapshot.name || 'S').charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
+          }) => {
+            const activeExpertAnalysis =
+              aiAnalysis?.expert_analyses.find(
+                analysis => analysis.expert_slug === activeExpertSlug,
+              ) || aiAnalysis?.expert_analyses[0]; // Fallback to first expert
 
-                <div className={styles.mainInfo}>
-                  <h3 className={styles.title}>
-                    {startup.public_snapshot.name || 'Unnamed Startup'}
-                  </h3>
-                  {(startup.public_snapshot.city || startup.public_snapshot.country) && (
-                    <div className={styles.location}>
-                      {[startup.public_snapshot.city, startup.public_snapshot.country]
-                        .filter(Boolean)
-                        .join(', ')}
-                    </div>
-                  )}
-                </div>
-
-                <div className={styles.rightInfo}>
-                  {startup.public_snapshot.status && (
-                    <span className={styles.status}>{startup.public_snapshot.status}</span>
-                  )}
-
-                  {startup.public_snapshot.website_urls &&
-                    startup.public_snapshot.website_urls.length > 0 && (
-                      <a
-                        href={startup.public_snapshot.website_urls[0]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.website}
-                      >
-                        Website
-                      </a>
-                    )}
-                </div>
-              </div>
-
-              <div className={styles.content}>
-                <p className={styles.description}>
-                  {startup.public_snapshot.description || 'No description provided'}
-                </p>
-              </div>
-
-              {/* Status display */}
-              <div className={styles.statusSection}>
-                <div className={`${styles.statusIndicator} ${styles[`status_${dataFetchStatus}`]}`}>
-                  {dataFetchStatus === 'fetching' && <LoadingSpinner size="small" />}
-                  {dataFetchStatus === 'idle' && <span className={styles.statusIcon}>⏳</span>}
-                  {dataFetchStatus === 'success' && <span className={styles.statusIcon}>✅</span>}
-                  {dataFetchStatus === 'error' && <span className={styles.statusIcon}>❌</span>}
-                  <span className={styles.statusText}>{dataFetchMessage}</span>
-                </div>
-
-                <div
-                  className={`${styles.statusIndicator} ${styles[`status_${processingStatus}`]}`}
-                >
-                  {processingStatus === 'processing' && <LoadingSpinner size="small" />}
-                  {processingStatus === 'idle' && <span className={styles.statusIcon}>⏳</span>}
-                  {processingStatus === 'success' && <span className={styles.statusIcon}>✅</span>}
-                  {processingStatus === 'error' && <span className={styles.statusIcon}>❌</span>}
-                  <span className={styles.statusText}>{processingMessage}</span>
-                  {processingStatus === 'error' && fullData && (
-                    <button
-                      className={styles.retryButton}
-                      onClick={() => retryAIAnalysis(startup.id)}
-                      disabled={isProcessing}
-                    >
-                      Try Again
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* AI Analysis Results */}
-              {aiAnalysis && (
-                <div className={styles.aiAnalysisSection}>
-                  {/* Strategies First */}
-                  <div className={styles.strategies}>
-                    <h5>📊 Analysis by Strategies</h5>
-                    {Object.entries(aiAnalysis.strategies).map(([strategyName, strategy]) => (
-                      <div
-                        key={strategyName}
-                        className={`${styles.strategy} ${styles[`strategy_${strategy.decision.toLowerCase()}`]}`}
-                      >
-                        <div className={styles.strategyHeader}>
-                          <span className={styles.strategyName}>
-                            {strategyName === 'conservative'
-                              ? '🛡️ Conservative'
-                              : strategyName === 'growth'
-                                ? '🚀 Aggressive'
-                                : '⚖️ Balanced'}
-                            {aiAnalysis.recommendation.best_strategy !== 'none' &&
-                              strategyName === aiAnalysis.recommendation.best_strategy &&
-                              ' ⭐'}
-                          </span>
-                          <span
-                            className={`${styles.decision} ${styles[strategy.decision.toLowerCase()]}`}
-                          >
-                            {strategy.decision === 'INVEST' ? '✅ INVEST' : '❌ SKIP'}
-                          </span>
-                        </div>
-                        <div className={styles.strategyDetails}>
-                          <div className={styles.percentage}>
-                            Investment Percentage:{' '}
-                            <strong>{strategy.investment_percentage}%</strong>
-                          </div>
-                          <div className={styles.confidence}>
-                            Confidence: <strong>{strategy.confidence_score}%</strong>
-                          </div>
-                          <p className={styles.reasoning}>{strategy.reasoning}</p>
-                        </div>
+            return (
+              <div key={startup.id} className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <div className={styles.logoSection}>
+                    {startup.public_snapshot.logo_url ? (
+                      <Image
+                        src={startup.public_snapshot.logo_url}
+                        alt={`${startup.public_snapshot.name || 'Startup'} logo`}
+                        width={48}
+                        height={48}
+                        className={styles.logo}
+                      />
+                    ) : (
+                      <div className={styles.logoPlaceholder}>
+                        {(startup.public_snapshot.name || 'S').charAt(0).toUpperCase()}
                       </div>
-                    ))}
+                    )}
                   </div>
 
-                  {/* Recommendation Second */}
-                  <div className={styles.recommendation}>
-                    <h5>💡 Recommendation</h5>
-                    <div className={styles.bestStrategy}>
-                      {aiAnalysis.recommendation.best_strategy === 'none' ? (
-                        <>
-                          Recommendation: <strong>❌ DO NOT INVEST</strong>
-                          <span className={styles.confidence}>
-                            (confidence: {aiAnalysis.recommendation.overall_confidence}%)
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          Best Strategy: <strong>{aiAnalysis.recommendation.best_strategy}</strong>
-                          <span className={styles.confidence}>
-                            (confidence: {aiAnalysis.recommendation.overall_confidence}%)
-                          </span>
-                        </>
+                  <div className={styles.mainInfo}>
+                    <h3 className={styles.title}>
+                      {startup.public_snapshot.name || 'Unnamed Startup'}
+                    </h3>
+                    {(startup.public_snapshot.city || startup.public_snapshot.country) && (
+                      <div className={styles.location}>
+                        {[startup.public_snapshot.city, startup.public_snapshot.country]
+                          .filter(Boolean)
+                          .join(', ')}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={styles.rightInfo}>
+                    {startup.public_snapshot.status && (
+                      <span className={styles.status}>{startup.public_snapshot.status}</span>
+                    )}
+
+                    {startup.public_snapshot.website_urls &&
+                      startup.public_snapshot.website_urls.length > 0 && (
+                        <a
+                          href={startup.public_snapshot.website_urls[0]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.website}
+                        >
+                          Website
+                        </a>
                       )}
-                    </div>
-                    <p className={styles.reasoning}>{aiAnalysis.recommendation.reasoning}</p>
+                  </div>
+                </div>
+
+                <div className={styles.content}>
+                  <p className={styles.description}>
+                    {startup.public_snapshot.description || 'No description provided'}
+                  </p>
+                </div>
+
+                {/* Status display */}
+                <div className={styles.statusSection}>
+                  <div
+                    className={`${styles.statusIndicator} ${styles[`status_${dataFetchStatus}`]}`}
+                  >
+                    {dataFetchStatus === 'fetching' && <LoadingSpinner size="small" />}
+                    {dataFetchStatus === 'idle' && <span className={styles.statusIcon}>⏳</span>}
+                    {dataFetchStatus === 'success' && <span className={styles.statusIcon}>✅</span>}
+                    {dataFetchStatus === 'error' && <span className={styles.statusIcon}>❌</span>}
+                    <span className={styles.statusText}>{dataFetchMessage}</span>
                   </div>
 
-                  {/* Detailed Analysis Accordion */}
-                  <div className={styles.detailedAnalysisSection}>
-                    <h5
-                      className={styles.detailedAnalysisHeader}
-                      onClick={() => toggleDetailedAnalysis(startup.id)}
-                    >
-                      🔍 Detailed Analysis
-                      <span className={styles.accordionIcon}>
-                        {expandedDetailedAnalysis.has(startup.id) ? '▼' : '▶'}
-                      </span>
-                    </h5>
-                    {expandedDetailedAnalysis.has(startup.id) && (
-                      <div className={styles.analysisGrid}>
-                        <div className={styles.analysisItem}>
-                          <strong>Milestone Execution:</strong>
-                          <p>{aiAnalysis.unified_analysis.milestone_execution}</p>
-                        </div>
-                        <div className={styles.analysisItem}>
-                          <strong>Scoring:</strong>
-                          <p>{aiAnalysis.unified_analysis.scoring_dynamics}</p>
-                        </div>
-                        <div className={styles.analysisItem}>
-                          <strong>Team:</strong>
-                          <p>{aiAnalysis.unified_analysis.team_competency}</p>
-                        </div>
-                        <div className={styles.analysisItem}>
-                          <strong>Market:</strong>
-                          <p>{aiAnalysis.unified_analysis.market_potential}</p>
-                        </div>
-                        <div className={styles.analysisItem}>
-                          <strong>Risks:</strong>
-                          <p>{aiAnalysis.unified_analysis.risk_factors}</p>
-                        </div>
-                      </div>
+                  <div
+                    className={`${styles.statusIndicator} ${styles[`status_${processingStatus}`]}`}
+                  >
+                    {processingStatus === 'processing' && <LoadingSpinner size="small" />}
+                    {processingStatus === 'idle' && <span className={styles.statusIcon}>⏳</span>}
+                    {processingStatus === 'success' && (
+                      <span className={styles.statusIcon}>✅</span>
+                    )}
+                    {processingStatus === 'error' && <span className={styles.statusIcon}>❌</span>}
+                    <span className={styles.statusText}>{processingMessage}</span>
+                    {processingStatus === 'error' && fullData && (
+                      <button
+                        className={styles.retryButton}
+                        onClick={() => retryAIAnalysis(startup.id)}
+                        disabled={isProcessing}
+                      >
+                        Try Again
+                      </button>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
-          ),
+
+                {/* AI Analysis Results */}
+                {aiAnalysis && (
+                  <div className={styles.aiAnalysisSection}>
+                    {/* Expert Selector */}
+                    <div className={styles.expertTabs}>
+                      <h5>👥 Expert Analyses</h5>
+                      <div className={styles.expertTabsContainer}>
+                        {aiAnalysis.expert_analyses.map(expertAnalysis => {
+                          const expertData = investmentExperts.find(
+                            e => e.slug === expertAnalysis.expert_slug,
+                          );
+                          const isActive = expertAnalysis.expert_slug === activeExpertSlug;
+
+                          const hasInvestDecision = Object.values(
+                            expertAnalysis.analysis.strategies,
+                          ).some(strategy => strategy.decision === 'INVEST');
+                          const bestStrategy = expertAnalysis.analysis.recommendation.best_strategy;
+                          const recommendsInvestment = bestStrategy !== 'none' && hasInvestDecision;
+
+                          return (
+                            <button
+                              key={expertAnalysis.expert_slug}
+                              className={`${styles.expertTab} ${isActive ? styles.active : ''}`}
+                              onClick={() =>
+                                switchActiveExpert(startup.id, expertAnalysis.expert_slug)
+                              }
+                            >
+                              <div className={styles.expertTabPhoto}>
+                                <Image
+                                  src={`/experts/${expertAnalysis.expert_slug}.jpg`}
+                                  alt={expertAnalysis.expert_name}
+                                  width={32}
+                                  height={32}
+                                />
+                              </div>
+                              <div className={styles.expertTabInfo}>
+                                <div className={styles.expertTabName}>
+                                  {expertAnalysis.expert_name}
+                                </div>
+                                <div className={styles.expertTabFund}>
+                                  {expertData?.fund || 'Unknown Fund'}
+                                </div>
+                              </div>
+                              <div
+                                className={`${styles.expertTabRecommendation} ${recommendsInvestment ? styles.invest : styles.pass}`}
+                              >
+                                {recommendsInvestment ? '✓' : '✗'}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Active Expert Analysis */}
+                    {activeExpertAnalysis && (
+                      <>
+                        {/* Strategies First */}
+                        <div className={styles.strategies}>
+                          <h5>📊 Analysis by Strategies</h5>
+                          {Object.entries(activeExpertAnalysis.analysis.strategies).map(
+                            ([strategyName, strategy]) => (
+                              <div
+                                key={strategyName}
+                                className={`${styles.strategy} ${styles[`strategy_${strategy.decision.toLowerCase()}`]}`}
+                              >
+                                <div className={styles.strategyHeader}>
+                                  <span className={styles.strategyName}>
+                                    {strategyName === 'conservative'
+                                      ? '🛡️ Conservative'
+                                      : strategyName === 'growth'
+                                        ? '🚀 Aggressive'
+                                        : '⚖️ Balanced'}
+                                    {activeExpertAnalysis.analysis.recommendation.best_strategy !==
+                                      'none' &&
+                                      strategyName ===
+                                        activeExpertAnalysis.analysis.recommendation
+                                          .best_strategy &&
+                                      ' ⭐'}
+                                  </span>
+                                  <span
+                                    className={`${styles.decision} ${styles[strategy.decision.toLowerCase()]}`}
+                                  >
+                                    {strategy.decision === 'INVEST' ? '✅ INVEST' : '❌ SKIP'}
+                                  </span>
+                                </div>
+                                <div className={styles.strategyDetails}>
+                                  <div className={styles.percentage}>
+                                    Investment Percentage:{' '}
+                                    <strong>{strategy.investment_percentage}%</strong>
+                                  </div>
+                                  <div className={styles.confidence}>
+                                    Confidence: <strong>{strategy.confidence_score}%</strong>
+                                  </div>
+                                  <p className={styles.reasoning}>{strategy.reasoning}</p>
+                                </div>
+                              </div>
+                            ),
+                          )}
+                        </div>
+
+                        {/* Recommendation Second */}
+                        <div className={styles.recommendation}>
+                          <h5>💡 Recommendation</h5>
+                          <div className={styles.bestStrategy}>
+                            {activeExpertAnalysis.analysis.recommendation.best_strategy ===
+                            'none' ? (
+                              <>
+                                Recommendation: <strong>❌ DO NOT INVEST</strong>
+                                <span className={styles.confidence}>
+                                  (confidence:{' '}
+                                  {activeExpertAnalysis.analysis.recommendation.overall_confidence}
+                                  %)
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                Best Strategy:{' '}
+                                <strong>
+                                  {activeExpertAnalysis.analysis.recommendation.best_strategy}
+                                </strong>
+                                <span className={styles.confidence}>
+                                  (confidence:{' '}
+                                  {activeExpertAnalysis.analysis.recommendation.overall_confidence}
+                                  %)
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <p className={styles.reasoning}>
+                            {activeExpertAnalysis.analysis.recommendation.reasoning}
+                          </p>
+                        </div>
+
+                        {/* Detailed Analysis Accordion */}
+                        <div className={styles.detailedAnalysisSection}>
+                          <h5
+                            className={styles.detailedAnalysisHeader}
+                            onClick={() => toggleDetailedAnalysis(startup.id)}
+                          >
+                            🔍 Detailed Analysis
+                            <span className={styles.accordionIcon}>
+                              {expandedDetailedAnalysis.has(startup.id) ? '▼' : '▶'}
+                            </span>
+                          </h5>
+                          {expandedDetailedAnalysis.has(startup.id) && (
+                            <div className={styles.analysisGrid}>
+                              <div className={styles.analysisItem}>
+                                <strong>Milestone Execution:</strong>
+                                <p>
+                                  {
+                                    activeExpertAnalysis.analysis.unified_analysis
+                                      .milestone_execution
+                                  }
+                                </p>
+                              </div>
+                              <div className={styles.analysisItem}>
+                                <strong>Scoring:</strong>
+                                <p>
+                                  {activeExpertAnalysis.analysis.unified_analysis.scoring_dynamics}
+                                </p>
+                              </div>
+                              <div className={styles.analysisItem}>
+                                <strong>Team:</strong>
+                                <p>
+                                  {activeExpertAnalysis.analysis.unified_analysis.team_competency}
+                                </p>
+                              </div>
+                              <div className={styles.analysisItem}>
+                                <strong>Market:</strong>
+                                <p>
+                                  {activeExpertAnalysis.analysis.unified_analysis.market_potential}
+                                </p>
+                              </div>
+                              <div className={styles.analysisItem}>
+                                <strong>Risks:</strong>
+                                <p>{activeExpertAnalysis.analysis.unified_analysis.risk_factors}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          },
         )}
       </div>
     </div>

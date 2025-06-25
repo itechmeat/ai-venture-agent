@@ -1,15 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { VentureAgentAnalysisResult } from '@/types/ai';
-
-interface APIResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  metadata?: {
-    processingTime: number;
-    [key: string]: unknown;
-  };
-}
+import type { APIResponse } from '@/lib/api/base-handler';
 
 interface VentureAgentAPIResponse {
   analysis: VentureAgentAnalysisResult;

@@ -2,6 +2,8 @@ import { APIError } from './middleware/auth';
 import { executeAIAnalysisWithRetry } from './gemini-utils';
 import {
   VentureAgentAnalysisResult,
+  MultiExpertAnalysisResult,
+  MultiExpertAnalysisResultSchema,
   GeminiGenerateRequest,
   GeminiGenerateResponse,
   OpenRouterRequest,
@@ -28,7 +30,6 @@ async function generateWithGemini(
   const geminiUrl =
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-  // Применяем ужесточение промпта для Gemini
   const enhancedPrompt = enforceStrictJSONForModel(prompt, AI_MODELS.GEMINI_FLASH);
 
   let attemptCount = 0;
@@ -117,7 +118,6 @@ async function generateWithOpenRouter(
 ): Promise<{ result: VentureAgentAnalysisResult; attempts: number }> {
   const openRouterUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-  // Применяем ужесточение промпта для проблемных моделей
   const enhancedPrompt = enforceStrictJSONForModel(prompt, config.model);
 
   log('[OpenRouter] Starting analysis with config:', {
@@ -372,7 +372,6 @@ export async function generateVentureAgentAnalysis(
       model: providerConfig.model,
     };
   } catch (error) {
-    // Более детальное логирование ошибок
     const errorDetails = {
       provider: providerConfig.provider,
       model: providerConfig.model,
@@ -384,7 +383,6 @@ export async function generateVentureAgentAnalysis(
 
     logError('[AI Analysis] Analysis failed with detailed context:', errorDetails);
 
-    // Проверяем если это ошибка парсинга JSON
     if (
       error instanceof Error &&
       (error.message.includes('JSON') ||
@@ -402,12 +400,351 @@ export async function generateVentureAgentAnalysis(
         },
       );
 
-      // Перебрасываем ошибку с дополнительным контекстом
       throw new APIError(
         `AI model ${providerConfig.model} returned invalid JSON format: ${error.message}. This model may need different prompting strategy.`,
         500,
       );
     }
+
+    throw error;
+  }
+}
+
+/**
+ * Generate multi-expert analysis with validation and retry logic
+ */
+export async function generateMultiExpertAnalysis(
+  prompt: string,
+  selectedModel?: AvailableModel,
+): Promise<{ result: MultiExpertAnalysisResult; attempts: number; model: string }> {
+  log('[Multi-Expert Analysis] Starting multi-expert venture analysis...', {
+    promptLength: prompt.length,
+    selectedModel: selectedModel || 'default',
+  });
+
+  const providerConfig = getAIProviderConfig(selectedModel);
+
+  log('[Multi-Expert Analysis] Using provider config:', {
+    provider: providerConfig.provider,
+    model: providerConfig.model,
+  });
+
+  // Create wrapper functions for multi-expert analysis
+  const generateWithGeminiMultiExpert = async (
+    prompt: string,
+    apiKey: string,
+  ): Promise<{ result: MultiExpertAnalysisResult; attempts: number }> => {
+    const geminiUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+    const enhancedPrompt = enforceStrictJSONForModel(prompt, AI_MODELS.GEMINI_FLASH);
+
+    let attemptCount = 0;
+
+    const makeAPICall = async (): Promise<string> => {
+      attemptCount++;
+
+      const requestBody: GeminiGenerateRequest = {
+        contents: [
+          {
+            parts: [
+              {
+                text: enhancedPrompt,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 8192, // Увеличиваем для множественных анализов
+        },
+      };
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT * 2); // Увеличиваем таймаут
+
+      try {
+        const response = await fetch(`${geminiUrl}?key=${apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new APIError(`Gemini API error: ${response.status} ${response.statusText}`, 500);
+        }
+
+        const data: GeminiGenerateResponse = await response.json();
+
+        if (data.error) {
+          throw new APIError(`Gemini API error: ${data.error.message}`, 500);
+        }
+
+        if (data.candidates && data.candidates.length > 0) {
+          const candidate = data.candidates[0];
+          if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+            const resultText = candidate.content.parts[0].text;
+            if (resultText) {
+              return resultText.trim();
+            }
+          }
+        }
+
+        throw new APIError('No content generated from Gemini API', 500);
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof APIError) {
+          throw error;
+        }
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            throw new APIError('Gemini API request timeout', 408);
+          }
+          throw new APIError(`Gemini API error: ${error.message}`, 500);
+        }
+        throw new APIError('Failed to generate content with Gemini API', 500);
+      }
+    };
+
+    const executeWithRetryMultiExpert = async (
+      apiCall: () => Promise<string>,
+    ): Promise<MultiExpertAnalysisResult> => {
+      const maxAttempts = 3;
+      let lastError: Error | null = null;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          log(`[Multi-Expert Retry] Attempt ${attempt}/${maxAttempts}`);
+          const responseText = await apiCall();
+
+          let parsedData: unknown;
+          try {
+            parsedData = JSON.parse(responseText);
+          } catch (parseError) {
+            log('Initial JSON parse failed, attempting cleanup...', {
+              error: parseError instanceof Error ? parseError.message : String(parseError),
+              responseLength: responseText.length,
+              responsePreview: responseText.substring(0, 200),
+            });
+
+            const cleanedResponse = responseText
+              .replace(/^```(?:json)?\s*/i, '')
+              .replace(/\s*```\s*$/i, '')
+              .trim();
+
+            log('Attempting to parse cleaned response:', {
+              cleanedLength: cleanedResponse.length,
+              cleanedPreview: cleanedResponse.substring(0, 200),
+            });
+
+            parsedData = JSON.parse(cleanedResponse);
+          }
+
+          const validatedResult = MultiExpertAnalysisResultSchema.parse(parsedData);
+          log('Successfully parsed and validated multi-expert AI response');
+          return validatedResult;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          logError(`[Multi-Expert Retry] Attempt ${attempt} failed:`, {
+            error: lastError.message,
+            attempt,
+            maxAttempts,
+          });
+
+          if (attempt === maxAttempts) {
+            break;
+          }
+
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          log(`[Multi-Expert Retry] Waiting ${delay}ms before next attempt...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+
+      const errorMessage = `Multi-expert analysis failed after ${maxAttempts} attempts. Last error: ${lastError?.message || 'Unknown error'}`;
+      logError('[Multi-Expert Retry] All attempts exhausted:', {
+        maxAttempts,
+        lastError: lastError?.message,
+      });
+      throw new APIError(errorMessage, 500);
+    };
+
+    const result = await executeWithRetryMultiExpert(makeAPICall);
+    return { result, attempts: attemptCount };
+  };
+
+  const generateWithOpenRouterMultiExpert = async (
+    prompt: string,
+    config: { apiKey: string; model: string },
+  ): Promise<{ result: MultiExpertAnalysisResult; attempts: number }> => {
+    const openRouterUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    const enhancedPrompt = enforceStrictJSONForModel(prompt, config.model);
+
+    let attemptCount = 0;
+
+    const makeAPICall = async (): Promise<string> => {
+      attemptCount++;
+
+      const requestBody: OpenRouterRequest = {
+        model: config.model,
+        messages: [
+          {
+            role: 'user',
+            content: enhancedPrompt,
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 8192,
+      };
+
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        'X-Title': 'AI Venture Agent',
+      };
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT * 2); // Увеличиваем таймаут
+
+      try {
+        const response = await fetch(openRouterUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new APIError(
+            `OpenRouter API error: ${response.status} ${response.statusText}. Response: ${errorText}`,
+            500,
+          );
+        }
+
+        const data: OpenRouterResponse = await response.json();
+
+        if (data.error) {
+          throw new APIError(`OpenRouter API error: ${data.error.message}`, 500);
+        }
+
+        if (data.choices && data.choices.length > 0) {
+          const choice = data.choices[0];
+          if (choice.message && choice.message.content) {
+            return choice.message.content.trim();
+          }
+        }
+
+        throw new APIError('No content generated from OpenRouter API', 500);
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof APIError) {
+          throw error;
+        }
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            throw new APIError('OpenRouter API request timeout', 408);
+          }
+          throw new APIError(`OpenRouter API error: ${error.message}`, 500);
+        }
+        throw new APIError('Failed to generate content with OpenRouter API', 500);
+      }
+    };
+
+    const executeWithRetryMultiExpert = async (
+      apiCall: () => Promise<string>,
+    ): Promise<MultiExpertAnalysisResult> => {
+      const maxAttempts = 3;
+      let lastError: Error | null = null;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const responseText = await apiCall();
+
+          let parsedData: unknown;
+          try {
+            parsedData = JSON.parse(responseText);
+          } catch {
+            const cleanedResponse = responseText
+              .replace(/^```(?:json)?\s*/i, '')
+              .replace(/\s*```\s*$/i, '')
+              .trim();
+            parsedData = JSON.parse(cleanedResponse);
+          }
+
+          const validatedResult = MultiExpertAnalysisResultSchema.parse(parsedData);
+          return validatedResult;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+
+          if (attempt === maxAttempts) {
+            break;
+          }
+
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+
+      const errorMessage = `Multi-expert analysis failed after ${maxAttempts} attempts. Last error: ${lastError?.message || 'Unknown error'}`;
+      throw new APIError(errorMessage, 500);
+    };
+
+    const result = await executeWithRetryMultiExpert(makeAPICall);
+    return { result, attempts: attemptCount };
+  };
+
+  let analysisResult: { result: MultiExpertAnalysisResult; attempts: number };
+
+  try {
+    switch (providerConfig.provider) {
+      case 'gemini':
+        log('[Multi-Expert Analysis] Delegating to Gemini...');
+        analysisResult = await generateWithGeminiMultiExpert(prompt, providerConfig.apiKey);
+        break;
+      case 'openrouter':
+        log('[Multi-Expert Analysis] Delegating to OpenRouter...');
+        analysisResult = await generateWithOpenRouterMultiExpert(prompt, {
+          apiKey: providerConfig.apiKey,
+          model: providerConfig.model,
+        });
+        break;
+      default:
+        throw new APIError(`Unsupported AI provider: ${providerConfig.provider}`, 500);
+    }
+
+    log('[Multi-Expert Analysis] Analysis completed successfully:', {
+      provider: providerConfig.provider,
+      model: providerConfig.model,
+      attempts: analysisResult.attempts,
+      expertCount: analysisResult.result.expert_analyses.length,
+    });
+
+    return {
+      ...analysisResult,
+      model: providerConfig.model,
+    };
+  } catch (error) {
+    const errorDetails = {
+      provider: providerConfig.provider,
+      model: providerConfig.model,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      promptLength: prompt.length,
+      timestamp: new Date().toISOString(),
+    };
+
+    logError('[Multi-Expert Analysis] Analysis failed with detailed context:', errorDetails);
 
     throw error;
   }

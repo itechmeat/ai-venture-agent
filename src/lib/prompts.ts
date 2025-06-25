@@ -175,6 +175,185 @@ IMPORTANT GUIDELINES:
 Your analysis will directly influence investment decisions, so ensure thoroughness, accuracy, and critical thinking.`,
 
   /**
+   * Multi-expert venture analysis prompt
+   * Analyzes startups from the perspective of multiple investment experts
+   */
+  MULTI_EXPERT_VENTURE_ANALYSIS: `You are an expert AI system capable of simulating multiple venture capital experts. Your task is to analyze a startup project from the perspective of each selected expert.
+
+PROJECT DATA TO ANALYZE:
+{{PROJECT_DATA}}
+
+SELECTED EXPERTS TO SIMULATE:
+{{EXPERTS_DATA}}
+
+ANALYSIS TASK:
+For EACH expert listed above, you must conduct a complete venture analysis from their unique perspective, methodology, and investment philosophy. Each expert should analyze the same project data but through their own lens and approach.
+
+FOR EACH EXPERT, perform the analysis as if you ARE that expert, using:
+- Their specific methodology and approach
+- Their areas of expertise and focus
+- Their investment philosophy and criteria
+- Their typical stage preferences and deal structures
+
+UNIFIED ANALYSIS REQUIREMENTS (for each expert):
+Perform comprehensive analysis across these areas:
+
+1. **Milestone Execution Analysis**
+  - Evaluate completion rates of project milestones
+  - Assess adherence to timelines and quality of execution
+  - Analyze team's ability to deliver on promises
+  - Consider unplanned achievements as positive signals
+
+2. **Scoring Dynamics Analysis** 
+  - Review current scoring metrics and trends
+  - Compare performance against industry benchmarks
+  - Identify strengths and improvement areas
+  - Assess scoring stability and trajectory
+
+3. **Team Competency Assessment**
+  - Evaluate team skills relative to project stage
+  - Assess founder experience and track record
+  - Review team composition and key role coverage
+  - Consider execution capability demonstrated through milestones
+
+4. **Market Potential Evaluation**
+  - Analyze target market size and growth potential
+  - Assess competitive landscape and positioning
+  - Evaluate market timing and opportunity
+  - Consider scalability and expansion possibilities
+
+5. **Risk Factors Identification**
+  - Identify technical, market, and execution risks
+  - Assess regulatory and competitive threats
+  - Evaluate financial and operational risks
+  - Consider mitigation strategies and risk tolerance
+
+INVESTMENT STRATEGIES (for each expert):
+Apply these three distinct investment approaches:
+
+**CONSERVATIVE FUND**
+- Philosophy: Minimize risks, focus on proven execution
+- Criteria: Avoids idea/concept stages, requires prototype+
+- Execution: Demands >75% milestone completion rates  
+- Team: Values stable, experienced teams
+- Position: 20-50% of available round allocation (0% if criteria not met)
+- Risk tolerance: Low, requires strong proof points, will PASS on weak projects
+
+**GROWTH FUND**  
+- Philosophy: Maximize returns, embrace high risks
+- Criteria: Invests at any stage including idea/concept
+- Execution: Accepts milestone failures if team/market strong
+- Team: Focuses on potential over proven track record
+- Position: 80-100% of available round allocation (0% if fundamental flaws exist)
+- Risk tolerance: High, bets on breakthrough potential, but still avoids obviously failing projects
+
+**BALANCED FUND**
+- Philosophy: Optimize risk-return balance
+- Criteria: Typically starts at prototype/MVP stage
+- Execution: Requires >60% milestone completion rates
+- Team: Balances experience with potential
+- Position: 40-70% of available round allocation (0% if risks outweigh potential)
+- Risk tolerance: Moderate, balanced approach, will PASS if risk-reward ratio is unfavorable
+
+DECISION REQUIREMENTS (for each expert):
+For each strategy, provide:
+- **Decision**: "INVEST" or "PASS"
+- **Investment Percentage**: % of available round allocation
+- **Reasoning**: 1-2 sentences explaining the decision from that expert's perspective
+- **Confidence Score**: 0-100 representing decision confidence
+
+FINAL RECOMMENDATION (for each expert):
+- Each expert should make their own independent recommendation
+- Apply their specific investment philosophy and criteria
+- Consider their typical focus areas and stage preferences
+- Be critical and honest from their perspective
+- Select the most appropriate strategy OR recommend against investment entirely
+- Provide reasoning for the recommendation from their viewpoint
+- Give overall confidence score for the recommendation
+
+=== CRITICAL OUTPUT FORMATTING RULES ===
+
+WARNING: FAILURE TO FOLLOW THESE RULES WILL RESULT IN SYSTEM ERROR
+
+1. RESPOND WITH ONLY JSON - NO ADDITIONAL TEXT WHATSOEVER
+2. DO NOT include any text before the JSON object
+3. DO NOT include any text after the JSON object  
+4. DO NOT wrap the JSON in markdown code blocks (\`\`\`)
+5. DO NOT include any explanations, comments, or notes
+6. DO NOT use any formatting like "Here's the analysis:" or "Response:"
+7. DO NOT add newlines or whitespace before the opening brace {
+8. DO NOT add any content after the closing brace }
+9. ENSURE the JSON is valid and can be parsed by JSON.parse()
+10. ENSURE all required fields are present and correctly named
+
+THE ENTIRE RESPONSE MUST BE EXACTLY THIS JSON STRUCTURE AND NOTHING ELSE:
+
+{
+  "expert_analyses": [
+    {
+      "expert_slug": "expert-slug-from-data",
+      "expert_name": "Expert Name from data",
+      "analysis": {
+        "unified_analysis": {
+          "milestone_execution": "Detailed analysis from this expert's perspective",
+          "scoring_dynamics": "Analysis from this expert's methodology", 
+          "team_competency": "Assessment using this expert's criteria",
+          "market_potential": "Evaluation from this expert's focus areas",
+          "risk_factors": "Risk identification from this expert's experience"
+        },
+        "strategies": {
+          "conservative": {
+            "decision": "INVEST or PASS",
+            "investment_percentage": 0-50,
+            "reasoning": "Expert's reasoning for conservative strategy",
+            "confidence_score": 0-100
+          },
+          "growth": {
+            "decision": "INVEST or PASS", 
+            "investment_percentage": 0-100,
+            "reasoning": "Expert's reasoning for growth strategy",
+            "confidence_score": 0-100
+          },
+          "balanced": {
+            "decision": "INVEST or PASS",
+            "investment_percentage": 0-70,
+            "reasoning": "Expert's reasoning for balanced strategy", 
+            "confidence_score": 0-100
+          }
+        },
+        "recommendation": {
+          "best_strategy": "conservative, growth, balanced, or none",
+          "reasoning": "Expert's final recommendation reasoning",
+          "overall_confidence": 0-100
+        }
+      }
+    }
+  ]
+}
+
+IMPORTANT: The expert_analyses array must contain ONE analysis object for EACH expert in the EXPERTS_DATA. The order should match the order of experts provided.
+
+VALIDATION CHECKLIST BEFORE RESPONDING:
+✓ Response starts with { and ends with }
+✓ No text before or after the JSON
+✓ All string values are properly quoted
+✓ All numbers are valid integers (0-100 for scores, 0-100 for percentages)
+✓ Decision values are exactly "INVEST" or "PASS" (case-sensitive)
+✓ Best_strategy value is exactly one of: "conservative", "growth", "balanced", "none"
+✓ expert_slug and expert_name match the provided expert data exactly
+✓ expert_analyses array has same length as experts provided
+✓ No trailing commas
+✓ No comments or additional formatting
+✓ JSON is minified and parseable
+
+REMEMBER: 
+- Each expert should have distinctly different analysis based on their methodology
+- Consider each expert's specific focus areas (SaaS metrics, network effects, etc.)
+- Apply each expert's investment philosophy consistently
+- Expert names and slugs must match the provided data exactly
+- The analysis should reflect the expert's known investment approach and criteria`,
+
+  /**
    * Future prompts can be added here:
    *
    * STARTUP_COMPARISON: `...`,
@@ -213,7 +392,6 @@ export function getPromptWithVariables(key: PromptKey, variables: Record<string,
  * Apply additional JSON enforcement for problematic AI models
  */
 export function enforceStrictJSONForModel(prompt: string, modelName?: string): string {
-  // Модели, которые часто возвращают невалидный JSON
   const problematicModels = [
     'grok-3',
     'minimax-01',
@@ -227,10 +405,9 @@ export function enforceStrictJSONForModel(prompt: string, modelName?: string): s
     modelName && problematicModels.some(model => modelName.toLowerCase().includes(model));
 
   if (!isProblematicModel) {
-    return prompt; // Возвращаем оригинальный промпт для надежных моделей
+    return prompt;
   }
 
-  // Для проблемных моделей добавляем дополнительные ограничения
   const additionalEnforcement = `
 
 === EXTREME JSON ENFORCEMENT FOR ${modelName?.toUpperCase()} ===

@@ -2,21 +2,23 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createAPIHandler } from '@/lib/api/base-handler';
 import { APIError } from '@/lib/api/middleware/auth';
-import { generateVentureAgentAnalysis } from '@/lib/api/ai-utils';
+import { generateMultiExpertAnalysis } from '@/lib/api/ai-utils';
 import { getPromptWithVariables } from '@/lib/prompts';
-import { VentureAgentAnalysisResult, AvailableModel } from '@/types/ai';
+import { MultiExpertAnalysisResult, AvailableModel } from '@/types/ai';
+import investmentExperts from '@/data/investment_experts.json';
 
 // Request validation schema
 const ventureAgentRequestSchema = z.object({
   projectData: z.object({}).passthrough(), // Allow any project data structure
   selectedModel: z.string().optional(), // Optional model selection
+  selectedExperts: z.array(z.string()).min(1), // Required array of expert slugs
 });
 
 /**
  * AI Venture Agent Analysis Response
  */
 interface VentureAgentResponse {
-  analysis: VentureAgentAnalysisResult;
+  analysis: MultiExpertAnalysisResult;
   metadata: {
     processingTime: number;
     attempts: number;
@@ -33,20 +35,30 @@ export const POST = createAPIHandler(async (request: NextRequest) => {
   // Parse and validate request body
   const body = await request.json();
   const validatedData = ventureAgentRequestSchema.parse(body);
-  const { projectData, selectedModel } = validatedData;
+  const { projectData, selectedModel, selectedExperts } = validatedData;
 
   try {
-    // Create prompt with project data
-    const prompt = getPromptWithVariables('VENTURE_AGENT_ANALYSIS', {
-      PROJECT_DATA: JSON.stringify(projectData, null, 2),
+    // Найти данные о выбранных экспертах
+    const selectedExpertsData = selectedExperts.map(slug => {
+      const expert = investmentExperts.find(e => e.slug === slug);
+      if (!expert) {
+        throw new APIError(`Expert with slug "${slug}" not found`, 400);
+      }
+      return expert;
     });
 
-    // Generate analysis with validation and retry using universal AI utils
+    // Create prompt with project data and experts data
+    const prompt = getPromptWithVariables('MULTI_EXPERT_VENTURE_ANALYSIS', {
+      PROJECT_DATA: JSON.stringify(projectData, null, 2),
+      EXPERTS_DATA: JSON.stringify(selectedExpertsData, null, 2),
+    });
+
+    // Generate multi-expert analysis with validation and retry
     const {
       result: analysis,
       attempts,
       model,
-    } = await generateVentureAgentAnalysis(prompt, selectedModel as AvailableModel);
+    } = await generateMultiExpertAnalysis(prompt, selectedModel as AvailableModel);
 
     const processingTime = Date.now() - startTime;
 

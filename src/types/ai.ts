@@ -54,6 +54,16 @@ export interface VentureAgentAnalysisResult {
   recommendation: VentureAgentRecommendation;
 }
 
+export interface ExpertAnalysisResult {
+  expert_slug: string;
+  expert_name: string;
+  analysis: VentureAgentAnalysisResult;
+}
+
+export interface MultiExpertAnalysisResult {
+  expert_analyses: ExpertAnalysisResult[];
+}
+
 // Zod schemas for validation
 export const VentureAgentDecisionSchema = z.object({
   decision: z.enum(['INVEST', 'PASS']),
@@ -86,6 +96,16 @@ export const VentureAgentAnalysisResultSchema = z.object({
   unified_analysis: VentureAgentUnifiedAnalysisSchema,
   strategies: VentureAgentStrategiesSchema,
   recommendation: VentureAgentRecommendationSchema,
+});
+
+export const ExpertAnalysisResultSchema = z.object({
+  expert_slug: z.string().min(1),
+  expert_name: z.string().min(1),
+  analysis: VentureAgentAnalysisResultSchema,
+});
+
+export const MultiExpertAnalysisResultSchema = z.object({
+  expert_analyses: z.array(ExpertAnalysisResultSchema),
 });
 
 // Project data generation types
