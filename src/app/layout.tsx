@@ -27,6 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-title" content="Venture Agent" />
+      </head>
+
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <QueryProvider>
           <Theme accentColor="blue" grayColor="gray" radius="medium">

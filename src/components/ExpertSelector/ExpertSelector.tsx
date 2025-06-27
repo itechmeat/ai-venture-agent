@@ -52,22 +52,12 @@ export function ExpertSelector({
               className={`${styles.expertCard} ${isSelected ? styles.selected : ''} ${disabled ? styles.disabled : ''}`}
               onClick={() => toggleExpert(expert.slug)}
             >
-              <div className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => toggleExpert(expert.slug)}
-                  disabled={disabled}
-                  className={styles.checkboxInput}
-                />
-              </div>
-
               <div className={styles.expertImage}>
                 <Image
                   src={`/experts/${expert.slug}.jpg`}
                   alt={expert.name}
-                  width={120}
-                  height={120}
+                  width={48}
+                  height={48}
                   className={styles.avatar}
                 />
               </div>
@@ -75,6 +65,19 @@ export function ExpertSelector({
               <div className={styles.expertInfo}>
                 <h4 className={styles.name}>{expert.name}</h4>
                 <p className={styles.fund}>{expert.fund}</p>
+              </div>
+
+              <div className={styles.rightSection}>
+                <div className={styles.checkboxWrapper}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleExpert(expert.slug)}
+                    disabled={disabled}
+                    className={styles.checkboxInput}
+                  />
+                  <div className={styles.customCheckbox}></div>
+                </div>
                 <div className={styles.price}>{formatPrice(expert.price)}</div>
               </div>
             </div>
