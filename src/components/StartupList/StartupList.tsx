@@ -28,11 +28,12 @@ export function StartupList({ className }: StartupListProps) {
     error,
     switchActiveExpert,
     retryAIAnalysis,
+    retryRagExpert,
     analyzeStartups,
   } = useStartupAnalysis();
 
   const [expandedDetailedAnalysis, setExpandedDetailedAnalysis] = useState<Set<string>>(new Set());
-  const [selectedModel, setSelectedModel] = useState<AvailableModel>(AI_MODELS.GEMINI_FLASH);
+  const [selectedModel, setSelectedModel] = useState<AvailableModel>(AI_MODELS.GEMINI_25_FLASH);
   const [selectedExperts, setSelectedExperts] = useState<string[]>(['junior-manager']);
 
   const toggleDetailedAnalysis = useCallback((startupId: string) => {
@@ -56,6 +57,14 @@ export function StartupList({ className }: StartupListProps) {
       retryAIAnalysis(startupId, selectedModel, selectedExperts);
     },
     [retryAIAnalysis, selectedModel, selectedExperts],
+  );
+
+  const handleRetryExpert = useCallback(
+    (startupId: string, expertSlug: string) => {
+      console.log('handleRetryExpert called with:', { startupId, expertSlug, selectedModel });
+      retryRagExpert(startupId, expertSlug, selectedModel);
+    },
+    [retryRagExpert, selectedModel],
   );
 
   // Handle empty states
@@ -161,6 +170,7 @@ export function StartupList({ className }: StartupListProps) {
             onToggleExpanded={() => toggleDetailedAnalysis(startupData.startup.id)}
             onExpertChange={expertSlug => switchActiveExpert(startupData.startup.id, expertSlug)}
             onRetry={() => handleRetryAnalysis(startupData.startup.id)}
+            onRetryExpert={expertSlug => handleRetryExpert(startupData.startup.id, expertSlug)}
           />
         ))}
       </div>

@@ -10,4 +10,13 @@ export interface InvestmentExpert {
   expertise: string;
   focus: string;
   price: number;
+  photo?: string;
+  website?: string;
+  twitter?: string;
+  isRagExpert?: boolean;
+  ragConfig?: {
+    topK: number;
+    scoreThreshold: number;
+    maxContextLength: number;
+  };
 }

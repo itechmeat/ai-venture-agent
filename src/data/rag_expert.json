@@ -1,0 +1,37 @@
+{
+  "id": "rag-expert",
+  "slug": "ben-horowitz-ai",
+  "name": "Ben Horowitz (AI Knowledge Base)",
+  "fund": "AI-Powered Analysis",
+  "bio": "AI expert trained on knowledge from venture capitalist Ben Horowitz's books. Uses vector search across expert knowledge to analyze startups.",
+  "price": 0,
+  "photo": "/experts/ben-horowitz.jpg",
+  "website": "https://a16z.com",
+  "twitter": "@bhorowitz",
+  "methodology": "RAG-based analysis using proven venture capital investment methodologies",
+  "specialty": "AI-powered analysis using expert knowledge",
+  "isRagExpert": true,
+  "ragConfig": {
+    "topK": 5,
+    "scoreThreshold": 0.7,
+    "maxContextLength": 4000
+  },
+  "analysis_approach": {
+    "context_source": "Expert knowledge from venture capital investment books",
+    "search_strategy": "Vector search across relevant expert knowledge fragments",
+    "analysis_method": "Synthesis of found context with startup data to form expert opinion",
+    "strengths": [
+      "Access to proven venture capital investment methodologies",
+      "Fast analysis based on expert knowledge",
+      "Objective assessment without emotional bias",
+      "24/7 availability for analysis"
+    ],
+    "focus_areas": [
+      "Team and leadership analysis",
+      "Market opportunity assessment",
+      "Strategic planning",
+      "Risk management",
+      "Business scaling"
+    ]
+  }
+}

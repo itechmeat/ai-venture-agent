@@ -54,10 +54,20 @@ export interface VentureAgentAnalysisResult {
   recommendation: VentureAgentRecommendation;
 }
 
+// Analysis status for async processing
+export type AnalysisStatus = 'pending' | 'loading' | 'completed' | 'error';
+
 export interface ExpertAnalysisResult {
   expert_slug: string;
   expert_name: string;
   analysis: VentureAgentAnalysisResult;
+  status?: AnalysisStatus;
+  error?: string;
+  metadata?: {
+    processingTime?: number;
+    attempts?: number;
+    model?: string;
+  };
 }
 
 export interface MultiExpertAnalysisResult {
@@ -98,10 +108,31 @@ export const VentureAgentAnalysisResultSchema = z.object({
   recommendation: VentureAgentRecommendationSchema,
 });
 
-export const ExpertAnalysisResultSchema = z.object({
+// Legacy schema for completed analyses (used by existing AI generation)
+export const LegacyExpertAnalysisResultSchema = z.object({
   expert_slug: z.string().min(1),
   expert_name: z.string().min(1),
   analysis: VentureAgentAnalysisResultSchema,
+});
+
+export const LegacyMultiExpertAnalysisResultSchema = z.object({
+  expert_analyses: z.array(LegacyExpertAnalysisResultSchema),
+});
+
+// New schema for async analyses (with optional analysis and status)
+export const ExpertAnalysisResultSchema = z.object({
+  expert_slug: z.string().min(1),
+  expert_name: z.string().min(1),
+  analysis: VentureAgentAnalysisResultSchema.optional(),
+  status: z.enum(['pending', 'loading', 'completed', 'error']).optional(),
+  error: z.string().optional(),
+  metadata: z
+    .object({
+      processingTime: z.number().optional(),
+      attempts: z.number().optional(),
+      model: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const MultiExpertAnalysisResultSchema = z.object({
@@ -236,46 +267,49 @@ export const AI_MODELS = {
   GEMINI_FLASH: 'gemini-2.0-flash',
 
   // OpenRouter models
-  MINIMAX_01: 'minimax/minimax-01', // $0.20/M input, $1.10/M output
-  MISTRAL_SMALL_32: 'mistralai/mistral-small-3.2-24b-instruct:free', // Free
   GEMINI_25_FLASH: 'google/gemini-2.5-flash', // $0.30/M input, $2.50/M output, $1.238/K input imgs
   GROK_3: 'x-ai/grok-3', // $3/M input, $15/M output
-  DEEPSEEK_R1_0528: 'deepseek/deepseek-r1-0528:free', // Free
-  CLAUDE_SONNET_4: 'anthropic/claude-sonnet-4', // $3/M input, $15/M output, $4.80/K input imgs
-  PHI_4_REASONING_PLUS: 'microsoft/phi-4-reasoning-plus:free', // Free
-  QWEN3_30B_A3B: 'qwen/qwen3-30b-a3b:free', // Free
+  MINIMAX_01: 'minimax/minimax-01', // $0.20/M input, $1.10/M output
+  // MINIMAX_M1: 'minimax/minimax-m1', // $0.30/M input, $1.65M output
+  // MISTRAL_SMALL_32: 'mistralai/mistral-small-3.2-24b-instruct:free', // Free
   MAI_DS_R1: 'microsoft/mai-ds-r1:free', // Free
-  O4_MINI_HIGH: 'openai/o4-mini-high', // $1.10/M input, $4.40/M output, $0.842/K input imgs
+  DEEPSEEK_R1_0528: 'deepseek/deepseek-r1-0528:free', // Free
+  // CLAUDE_SONNET_4: 'anthropic/claude-sonnet-4', // $3/M input, $15/M output, $4.80/K input imgs
+  // PHI_4_REASONING_PLUS: 'microsoft/phi-4-reasoning-plus:free', // Free
+  // QWEN3_30B_A3B: 'qwen/qwen3-30b-a3b:free', // Free
+  // O4_MINI_HIGH: 'openai/o4-mini-high', // $1.10/M input, $4.40/M output, $0.842/K input imgs
 } as const;
 
 // Model display names for UI
 export const MODEL_DISPLAY_NAMES = {
   [AI_MODELS.GEMINI_FLASH]: 'Gemini 2.0 Flash (Google)',
-  [AI_MODELS.MINIMAX_01]: 'MiniMax-01 (OpenRouter)',
-  [AI_MODELS.MISTRAL_SMALL_32]: 'Mistral Small 3.2 24B (OpenRouter)',
   [AI_MODELS.GEMINI_25_FLASH]: 'Gemini 2.5 Flash (OpenRouter)',
   [AI_MODELS.GROK_3]: 'Grok 3 (OpenRouter)',
-  [AI_MODELS.DEEPSEEK_R1_0528]: 'DeepSeek R1 0528 (OpenRouter)',
-  [AI_MODELS.CLAUDE_SONNET_4]: 'Claude Sonnet 4 (OpenRouter)',
-  [AI_MODELS.PHI_4_REASONING_PLUS]: 'Phi 4 Reasoning Plus (OpenRouter)',
-  [AI_MODELS.QWEN3_30B_A3B]: 'Qwen3 30B A3B (OpenRouter)',
-  [AI_MODELS.MAI_DS_R1]: 'MAI DS R1 (OpenRouter)',
-  [AI_MODELS.O4_MINI_HIGH]: 'o4 Mini High (OpenRouter)',
+  [AI_MODELS.MINIMAX_01]: 'MiniMax-01 (OpenRouter)',
+  // [AI_MODELS.MINIMAX_M1]: 'minimax/minimax-m1 (OpenRouter)',
+  [AI_MODELS.MAI_DS_R1]: 'MAI DS R1 (OpenRouter, 0)',
+  // [AI_MODELS.MISTRAL_SMALL_32]: 'Mistral Small 3.2 24B (OpenRouter, 0)',
+  [AI_MODELS.DEEPSEEK_R1_0528]: 'DeepSeek R1 0528 (OpenRouter, 0)',
+  // [AI_MODELS.CLAUDE_SONNET_4]: 'Claude Sonnet 4 (OpenRouter)',
+  // [AI_MODELS.PHI_4_REASONING_PLUS]: 'Phi 4 Reasoning Plus (OpenRouter, 0)',
+  // [AI_MODELS.QWEN3_30B_A3B]: 'Qwen3 30B A3B (OpenRouter, 0)',
+  // [AI_MODELS.O4_MINI_HIGH]: 'o4 Mini High (OpenRouter)',
 } as const;
 
 // Available models for user selection
 export const AVAILABLE_MODELS = [
   AI_MODELS.GEMINI_FLASH,
-  AI_MODELS.MINIMAX_01,
-  AI_MODELS.MISTRAL_SMALL_32,
   AI_MODELS.GEMINI_25_FLASH,
   AI_MODELS.GROK_3,
-  AI_MODELS.DEEPSEEK_R1_0528,
-  AI_MODELS.CLAUDE_SONNET_4,
-  AI_MODELS.PHI_4_REASONING_PLUS,
-  AI_MODELS.QWEN3_30B_A3B,
+  AI_MODELS.MINIMAX_01,
+  // AI_MODELS.MINIMAX_M1,
   AI_MODELS.MAI_DS_R1,
-  AI_MODELS.O4_MINI_HIGH,
+  // AI_MODELS.MISTRAL_SMALL_32,
+  AI_MODELS.DEEPSEEK_R1_0528,
+  // AI_MODELS.CLAUDE_SONNET_4,
+  // AI_MODELS.PHI_4_REASONING_PLUS,
+  // AI_MODELS.QWEN3_30B_A3B,
+  // AI_MODELS.O4_MINI_HIGH,
 ] as const;
 
 export type AvailableModel = (typeof AVAILABLE_MODELS)[number];
@@ -286,3 +320,69 @@ export interface ValidationError {
   message: string;
   received?: unknown;
 }
+
+// RAG Analysis Types
+export interface RagContext {
+  content: string;
+  source: string;
+  score: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RagAnalysisResult {
+  context: RagContext[];
+  totalTokens: number;
+  processingTime: number;
+  searchResults: number;
+}
+
+export interface RagExpertAnalysisResult extends VentureAgentAnalysisResult {
+  rag_context: RagContext[];
+  rag_metadata: {
+    searchResults: number;
+    totalTokens: number;
+    processingTime: number;
+    contextRelevant: boolean;
+  };
+}
+
+// RAG Expert Configuration
+export interface RagExpertConfig {
+  isRagExpert: true;
+  ragConfig: {
+    topK: number;
+    scoreThreshold: number;
+    maxContextLength: number;
+  };
+}
+
+// Extended Expert Analysis Result for RAG
+export interface RagExpertAnalysis extends ExpertAnalysisResult {
+  analysis: RagExpertAnalysisResult;
+  expert_type: 'rag';
+}
+
+// Zod schemas for RAG validation
+export const RagContextSchema = z.object({
+  content: z.string().min(1),
+  source: z.string().min(1),
+  score: z.number().min(0).max(1),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export const RagAnalysisResultSchema = z.object({
+  context: z.array(RagContextSchema),
+  totalTokens: z.number().min(0),
+  processingTime: z.number().min(0),
+  searchResults: z.number().min(0),
+});
+
+export const RagExpertAnalysisResultSchema = VentureAgentAnalysisResultSchema.extend({
+  rag_context: z.array(RagContextSchema),
+  rag_metadata: z.object({
+    searchResults: z.number().min(0),
+    totalTokens: z.number().min(0),
+    processingTime: z.number().min(0),
+    contextRelevant: z.boolean(),
+  }),
+});

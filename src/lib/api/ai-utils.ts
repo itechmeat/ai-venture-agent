@@ -3,7 +3,9 @@ import { executeAIAnalysisWithRetry } from './gemini-utils';
 import {
   VentureAgentAnalysisResult,
   MultiExpertAnalysisResult,
-  MultiExpertAnalysisResultSchema,
+  LegacyMultiExpertAnalysisResultSchema,
+  RagExpertAnalysisResult,
+  RagExpertAnalysisResultSchema,
   GeminiGenerateRequest,
   GeminiGenerateResponse,
   OpenRouterRequest,
@@ -14,6 +16,8 @@ import {
   AvailableModel,
 } from '@/types/ai';
 import { enforceStrictJSONForModel } from '@/lib/prompts';
+import { ragAnalyzer } from '@/lib/rag';
+import { RagAnalysisError } from '@/lib/rag/rag-analyzer';
 
 // Conditional logging helper
 const shouldLog = () => process.env.NEXT_PUBLIC_LOGS === 'true';
@@ -456,12 +460,12 @@ export async function generateMultiExpertAnalysis(
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 8192, // Увеличиваем для множественных анализов
+          maxOutputTokens: 8192, // Increase for multiple analyses
         },
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT * 2); // Увеличиваем таймаут
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT * 2); // Increase timeout
 
       try {
         const response = await fetch(`${geminiUrl}?key=${apiKey}`, {
@@ -546,7 +550,7 @@ export async function generateMultiExpertAnalysis(
             parsedData = JSON.parse(cleanedResponse);
           }
 
-          const validatedResult = MultiExpertAnalysisResultSchema.parse(parsedData);
+          const validatedResult = LegacyMultiExpertAnalysisResultSchema.parse(parsedData);
           log('Successfully parsed and validated multi-expert AI response');
           return validatedResult;
         } catch (error) {
@@ -611,7 +615,7 @@ export async function generateMultiExpertAnalysis(
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT * 2); // Увеличиваем таймаут
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT * 2); // Increase timeout
 
       try {
         const response = await fetch(openRouterUrl, {
@@ -682,7 +686,7 @@ export async function generateMultiExpertAnalysis(
             parsedData = JSON.parse(cleanedResponse);
           }
 
-          const validatedResult = MultiExpertAnalysisResultSchema.parse(parsedData);
+          const validatedResult = LegacyMultiExpertAnalysisResultSchema.parse(parsedData);
           return validatedResult;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
@@ -746,6 +750,119 @@ export async function generateMultiExpertAnalysis(
 
     logError('[Multi-Expert Analysis] Analysis failed with detailed context:', errorDetails);
 
+    throw error;
+  }
+}
+
+/**
+ * Generate RAG-powered analysis using expert knowledge base
+ * @param startupData - Startup data to analyze
+ * @param model - AI model to use for analysis
+ * @returns Promise with RAG analysis result
+ */
+export async function generateRagAnalysis(
+  startupData: Record<string, unknown>,
+  model: AvailableModel,
+): Promise<{ result: RagExpertAnalysisResult; attempts: number; model: string }> {
+  log('[RAG Analysis] Starting RAG-powered analysis...');
+
+  const providerConfig = getAIProviderConfig(model);
+
+  try {
+    // 1. Perform RAG analysis to get relevant context
+    log('[RAG Analysis] Performing vector search for relevant context...');
+    const ragResult = await ragAnalyzer.analyzeStartup(startupData);
+
+    // 2. Check if context is relevant enough
+    if (!ragAnalyzer.isContextRelevant(ragResult.context)) {
+      log('[RAG Analysis] Warning: Limited relevant context found');
+    }
+
+    // 3. Create prompt context from RAG results
+    const ragContext = ragAnalyzer.createPromptContext(ragResult.context);
+
+    // 4. Build the full prompt with RAG context and startup data
+    const { PROMPTS } = await import('@/lib/prompts');
+    const prompt = PROMPTS.RAG_VENTURE_ANALYSIS.replace('{{RAG_CONTEXT}}', ragContext).replace(
+      '{{PROJECT_DATA}}',
+      JSON.stringify(startupData, null, 2),
+    );
+
+    log('[RAG Analysis] RAG context generated:', {
+      contextChunks: ragResult.context.length,
+      totalTokens: ragResult.totalTokens,
+      searchResults: ragResult.searchResults,
+      processingTime: ragResult.processingTime,
+      promptLength: prompt.length,
+    });
+
+    // 5. Generate AI analysis with RAG context
+    let analysisResult: { result: VentureAgentAnalysisResult; attempts: number };
+
+    switch (providerConfig.provider) {
+      case 'gemini':
+        log('[RAG Analysis] Using Gemini for RAG analysis...');
+        analysisResult = await generateWithGemini(prompt, providerConfig.apiKey);
+        break;
+      case 'openrouter':
+        log('[RAG Analysis] Using OpenRouter for RAG analysis...');
+        analysisResult = await generateWithOpenRouter(prompt, {
+          apiKey: providerConfig.apiKey,
+          model: providerConfig.model,
+        });
+        break;
+      default:
+        throw new APIError(`Unsupported AI provider: ${providerConfig.provider}`, 500);
+    }
+
+    // 6. Extend the result with RAG metadata
+    const ragExpertResult: RagExpertAnalysisResult = {
+      ...analysisResult.result,
+      rag_context: ragResult.context,
+      rag_metadata: {
+        searchResults: ragResult.searchResults,
+        totalTokens: ragResult.totalTokens,
+        processingTime: ragResult.processingTime,
+        contextRelevant: ragAnalyzer.isContextRelevant(ragResult.context),
+      },
+    };
+
+    // 7. Validate the result
+    const validatedResult = RagExpertAnalysisResultSchema.parse(ragExpertResult);
+
+    log('[RAG Analysis] RAG analysis completed successfully:', {
+      provider: providerConfig.provider,
+      model: providerConfig.model,
+      attempts: analysisResult.attempts,
+      ragContextChunks: ragResult.context.length,
+      ragTokens: ragResult.totalTokens,
+      contextRelevant: ragAnalyzer.isContextRelevant(ragResult.context),
+    });
+
+    return {
+      result: validatedResult,
+      attempts: analysisResult.attempts,
+      model: providerConfig.model,
+    };
+  } catch (error) {
+    if (error instanceof RagAnalysisError) {
+      logError('[RAG Analysis] RAG analysis failed:', {
+        code: error.code,
+        message: error.message,
+        cause: error.cause?.message,
+      });
+      throw new APIError(`RAG analysis failed: ${error.message}`, 500);
+    }
+
+    const errorDetails = {
+      provider: providerConfig.provider,
+      model: providerConfig.model,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    };
+
+    logError('[RAG Analysis] RAG analysis failed with detailed context:', errorDetails);
     throw error;
   }
 }

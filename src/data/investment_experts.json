@@ -9,6 +9,60 @@
     "price": 0
   },
   {
+    "name": "Ben Horowitz (RAG)",
+    "slug": "ben-horowitz",
+    "fund": "Andreessen Horowitz (a16z)",
+    "methodology": "RAG-based analysis using proven venture capital investment methodologies with vector search across expert knowledge base",
+    "expertise": "AI-powered team and leadership analysis, market opportunity assessment, strategic planning, risk management, business scaling",
+    "focus": "All stages of startup development with focus on analysis based on proven expert venture capital investment methodologies",
+    "price": 1.3,
+    "photo": "/experts/ben-horowitz.jpg",
+    "website": "https://a16z.com",
+    "twitter": "@bhorowitz",
+    "isRagExpert": true,
+    "ragConfig": {
+      "topK": 5,
+      "scoreThreshold": 0.3,
+      "maxContextLength": 4000
+    }
+  },
+  {
+    "name": "Peter Thiel (RAG)",
+    "slug": "peter-thiel",
+    "fund": "Founders Fund",
+    "methodology": "RAG-based analysis using proven venture capital investment methodologies with vector search across expert knowledge base",
+    "expertise": "Deep technology, breakthrough innovations, contrarian market analysis, monopoly business model development",
+    "focus": "Early-stage deep tech companies with potential for creating new markets and achieving monopolistic positions",
+    "price": 1.4,
+    "photo": "/experts/peter-thiel.jpg",
+    "website": "https://foundersfund.com",
+    "twitter": "@peterthiel",
+    "isRagExpert": true,
+    "ragConfig": {
+      "topK": 5,
+      "scoreThreshold": 0.3,
+      "maxContextLength": 4000
+    }
+  },
+  {
+    "name": "Steve Blank (RAG)",
+    "slug": "steve-blank",
+    "fund": "America's Frontier Fund",
+    "methodology": "RAG-based analysis using proven venture capital investment methodologies with vector search across expert knowledge base",
+    "expertise": "Customer development, lean startup methodology, business model validation, market testing strategies",
+    "focus": "All stages of startup development with emphasis on customer discovery and validation",
+    "price": 0.9,
+    "photo": "/experts/steve-blank.jpg",
+    "website": "https://steveblank.com",
+    "twitter": "@sgblank",
+    "isRagExpert": true,
+    "ragConfig": {
+      "topK": 5,
+      "scoreThreshold": 0.3,
+      "maxContextLength": 4000
+    }
+  },
+  {
     "name": "Ilya Strebulaev",
     "slug": "ilya-strebulaev",
     "fund": "Stanford Graduate School of Business",
@@ -34,15 +88,6 @@
     "expertise": "Network effects, platform businesses, marketplace dynamics, global scaling strategies, product-market fit optimization",
     "focus": "Platform and network-effect businesses from Series A onwards, companies with potential for global dominance",
     "price": 0.7
-  },
-  {
-    "name": "Peter Thiel",
-    "slug": "peter-thiel",
-    "fund": "Founders Fund",
-    "methodology": "Contrarian analysis seeking monopolistic advantages, zero-to-one innovation assessment, long-term technology trend evaluation",
-    "expertise": "Deep technology, breakthrough innovations, contrarian market analysis, monopoly business model development",
-    "focus": "Early-stage deep tech companies with potential for creating new markets and achieving monopolistic positions",
-    "price": 1.3
   },
   {
     "name": "Marc Andreessen",

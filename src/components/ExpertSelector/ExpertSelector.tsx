@@ -54,7 +54,7 @@ export function ExpertSelector({
             >
               <div className={styles.expertImage}>
                 <Image
-                  src={`/experts/${expert.slug}.jpg`}
+                  src={expert.photo || `/experts/${expert.slug}.jpg`}
                   alt={expert.name}
                   width={48}
                   height={48}

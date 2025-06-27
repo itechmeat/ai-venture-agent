@@ -4,7 +4,12 @@ import { createAPIHandler } from '@/lib/api/base-handler';
 import { APIError } from '@/lib/api/middleware/auth';
 import { generateMultiExpertAnalysis } from '@/lib/api/ai-utils';
 import { getPromptWithVariables } from '@/lib/prompts';
-import { MultiExpertAnalysisResult, AvailableModel } from '@/types/ai';
+import {
+  MultiExpertAnalysisResult,
+  AvailableModel,
+  ExpertAnalysisResult,
+  VentureAgentAnalysisResult,
+} from '@/types/ai';
 import investmentExperts from '@/data/investment_experts.json';
 
 // Request validation schema
@@ -23,11 +28,14 @@ interface VentureAgentResponse {
     processingTime: number;
     attempts: number;
     model: string;
+    ragExpertsCount: number;
+    regularExpertsCount: number;
+    requiresAsyncProcessing: boolean;
   };
 }
 
 /**
- * AI Venture Agent analysis endpoint
+ * AI Venture Agent analysis endpoint with async RAG processing
  */
 export const POST = createAPIHandler(async (request: NextRequest) => {
   const startTime = Date.now();
@@ -38,7 +46,7 @@ export const POST = createAPIHandler(async (request: NextRequest) => {
   const { projectData, selectedModel, selectedExperts } = validatedData;
 
   try {
-    // Найти данные о выбранных экспертах
+    // Find data about selected experts
     const selectedExpertsData = selectedExperts.map(slug => {
       const expert = investmentExperts.find(e => e.slug === slug);
       if (!expert) {
@@ -47,28 +55,78 @@ export const POST = createAPIHandler(async (request: NextRequest) => {
       return expert;
     });
 
-    // Create prompt with project data and experts data
-    const prompt = getPromptWithVariables('MULTI_EXPERT_VENTURE_ANALYSIS', {
-      PROJECT_DATA: JSON.stringify(projectData, null, 2),
-      EXPERTS_DATA: JSON.stringify(selectedExpertsData, null, 2),
-    });
+    // Separate RAG experts from regular experts
+    const ragExperts = selectedExpertsData.filter(expert => expert.isRagExpert === true);
+    const regularExperts = selectedExpertsData.filter(expert => !expert.isRagExpert);
 
-    // Generate multi-expert analysis with validation and retry
-    const {
-      result: analysis,
-      attempts,
-      model,
-    } = await generateMultiExpertAnalysis(prompt, selectedModel as AvailableModel);
+    console.log(
+      `Processing ${regularExperts.length} regular experts and ${ragExperts.length} RAG experts`,
+    );
+
+    // Create initial response with appropriate states
+    const expertAnalyses: ExpertAnalysisResult[] = [];
+
+    let attempts = 1;
+    let model = selectedModel || 'gemini-2.0-flash';
+
+    // Process regular experts synchronously if any
+    if (regularExperts.length > 0) {
+      console.log('Processing regular experts synchronously');
+
+      // Create prompt with project data and regular experts data
+      const prompt = getPromptWithVariables('MULTI_EXPERT_VENTURE_ANALYSIS', {
+        PROJECT_DATA: JSON.stringify(projectData, null, 2),
+        EXPERTS_DATA: JSON.stringify(regularExperts, null, 2),
+      });
+
+      // Generate multi-expert analysis with validation and retry
+      const result = await generateMultiExpertAnalysis(prompt, selectedModel as AvailableModel);
+
+      // Add completed regular expert analyses (transform legacy format to new format)
+      result.result.expert_analyses.forEach(expertResult => {
+        expertAnalyses.push({
+          expert_slug: expertResult.expert_slug,
+          expert_name: expertResult.expert_name,
+          analysis: expertResult.analysis,
+          status: 'completed' as const,
+          metadata: {
+            processingTime: Date.now() - startTime,
+            attempts: result.attempts,
+            model: result.model,
+          },
+        });
+      });
+
+      attempts = result.attempts;
+      model = result.model;
+    }
+
+    // Add RAG experts with pending status - they will be processed asynchronously
+    ragExperts.forEach(expert => {
+      expertAnalyses.push({
+        expert_slug: expert.slug,
+        expert_name: expert.name,
+        status: 'pending',
+        analysis: undefined as unknown as VentureAgentAnalysisResult, // Will be filled by separate API calls
+      });
+    });
 
     const processingTime = Date.now() - startTime;
 
-    // Return validated analysis
+    // Return response with loading states for RAG experts
+    const analysis: MultiExpertAnalysisResult = {
+      expert_analyses: expertAnalyses,
+    };
+
     return {
       analysis,
       metadata: {
         processingTime,
         attempts,
         model,
+        ragExpertsCount: ragExperts.length,
+        regularExpertsCount: regularExperts.length,
+        requiresAsyncProcessing: ragExperts.length > 0,
       },
     } as VentureAgentResponse;
   } catch (error) {

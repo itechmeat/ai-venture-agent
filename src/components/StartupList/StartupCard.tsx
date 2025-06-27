@@ -15,6 +15,7 @@ interface StartupCardProps {
   onToggleExpanded: () => void;
   onExpertChange: (expertSlug: string) => void;
   onRetry: () => void;
+  onRetryExpert?: (expertSlug: string) => void;
 }
 
 export function StartupCard({
@@ -24,6 +25,7 @@ export function StartupCard({
   onToggleExpanded,
   onExpertChange,
   onRetry,
+  onRetryExpert,
 }: StartupCardProps) {
   const {
     startup,
@@ -126,9 +128,12 @@ export function StartupCard({
             expertAnalyses={aiAnalysis.expert_analyses}
             activeExpertSlug={activeExpertSlug}
             onExpertChange={onExpertChange}
+            onRetryExpert={onRetryExpert}
           />
 
-          {activeExpertAnalysis && (
+          {activeExpertAnalysis &&
+            activeExpertAnalysis.status === 'completed' &&
+            activeExpertAnalysis.analysis && (
             <AnalysisSection
               expertAnalysis={activeExpertAnalysis}
               isExpanded={isExpanded}

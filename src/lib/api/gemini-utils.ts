@@ -52,9 +52,9 @@ export function isRetryableValidationError(error: unknown): boolean {
 export function parseAndValidateAIResponse(responseText: string): VentureAgentAnalysisResult {
   let parsed: unknown;
 
-  // Агрессивная очистка ответа
+  // Aggressive response cleanup
   const cleanResponse = (text: string): string => {
-    // Удаляем все до первой открывающей скобки и всё после последней закрывающей
+    // Remove everything before first opening brace and everything after last closing brace
     const startIndex = text.indexOf('{');
     const lastIndex = text.lastIndexOf('}');
 
@@ -64,21 +64,21 @@ export function parseAndValidateAIResponse(responseText: string): VentureAgentAn
 
     let cleanedText = text.slice(startIndex, lastIndex + 1);
 
-    // Удаляем возможные markdown блоки
+    // Remove possible markdown blocks
     cleanedText = cleanedText.replace(/```(?:json)?\s*|\s*```/g, '');
 
-    // Удаляем возможные комментарии и лишние символы
-    cleanedText = cleanedText.replace(/\/\/.*$/gm, ''); // однострочные комментарии
-    cleanedText = cleanedText.replace(/\/\*[\s\S]*?\*\//g, ''); // многострочные комментарии
+    // Remove possible comments and extra characters
+    cleanedText = cleanedText.replace(/\/\/.*$/gm, ''); // single-line comments
+    cleanedText = cleanedText.replace(/\/\*[\s\S]*?\*\//g, ''); // multi-line comments
 
-    // Удаляем лишние пробелы и переносы
+    // Remove extra spaces and line breaks
     cleanedText = cleanedText.trim();
 
     return cleanedText;
   };
 
   try {
-    // Пытаемся распарсить оригинальный ответ
+    // Try to parse original response
     parsed = JSON.parse(responseText);
   } catch (parseError) {
     console.warn('Initial JSON parse failed, attempting cleanup...', {
@@ -88,7 +88,7 @@ export function parseAndValidateAIResponse(responseText: string): VentureAgentAn
     });
 
     try {
-      // Очищаем ответ и пытаемся снова
+      // Clean response and try again
       const cleanedText = cleanResponse(responseText);
       console.log('Attempting to parse cleaned response:', {
         cleanedLength: cleanedText.length,
@@ -97,7 +97,7 @@ export function parseAndValidateAIResponse(responseText: string): VentureAgentAn
 
       parsed = JSON.parse(cleanedText);
     } catch (cleanupError) {
-      // Последняя попытка - извлекаем JSON из markdown блоков
+      // Last attempt - extract JSON from markdown blocks
       console.warn('Cleanup parse failed, trying markdown extraction...', {
         error: cleanupError instanceof Error ? cleanupError.message : 'Unknown cleanup error',
       });
@@ -136,12 +136,12 @@ export function parseAndValidateAIResponse(responseText: string): VentureAgentAn
     }
   }
 
-  // Проверяем что получили объект
+  // Check that we got an object
   if (!parsed || typeof parsed !== 'object') {
     throw new Error(`Parsed result is not an object: ${typeof parsed}`);
   }
 
-  // Валидируем против схемы
+  // Validate against schema
   try {
     const result = VentureAgentAnalysisResultSchema.parse(parsed);
     console.log('Successfully parsed and validated AI response');
