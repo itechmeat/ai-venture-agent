@@ -11,12 +11,14 @@
 - 📊 **Investment Strategies** - Comprehensive analysis including bootstrapping, angel, VC, and growth strategies
 - ⚡ **Real-time Processing** - Asynchronous analysis with live status updates
 - 🔄 **Retry Functionality** - Smart retry system for failed analyses
+- 💰 **Nevermined Integration** - AI service monetization with blockchain-based payments and subscriptions
 
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React, TypeScript, SCSS
 - **AI Models**: OpenAI GPT-4, Claude, Gemini via OpenRouter
 - **Vector DB**: Qdrant Cloud for RAG functionality
+- **Monetization**: Nevermined.app integration for AI service payments
 - **Deployment**: Vercel-ready
 
 ## Getting Started
@@ -27,21 +29,48 @@
    - OpenAI (for embeddings and GPT models)
    - OpenRouter (for accessing multiple AI models)
    - Qdrant Cloud (for vector database)
+   - Nevermined.app (for AI service monetization)
 
 ### Environment Setup
 
 Create a `.env.local` file in the project root with the following variables:
 
+#### Nevermined Environment Variables
+
+- **`NEVERMINED_AGENT_DID`** - Unique identifier for your AI agent in Nevermined network (e.g., `did:nv:venture-capital-agent-v1`)
+- **`NEVERMINED_AGENT_NAME`** - Display name for your AI service (e.g., `Venture Capital Analysis Agent`)
+- **`NEVERMINED_AGENT_DESCRIPTION`** - Description of your AI service capabilities
+- **`NEVERMINED_API_KEY`** - Your Nevermined API key for authentication
+- **`NEVERMINED_JWT_TOKEN`** - JWT token for Nevermined service access
+- **`NEVERMINED_TOKEN_ADDRESS`** - Blockchain token contract address for payments
+- **`NEVERMINED_SERVICE_ENDPOINT`** - Public URL endpoint for your AI service
+
 ```sh
+# Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3100
 NEXT_PUBLIC_LOGS=true
 NEXT_PUBLIC_SHOW_MODELS=true
+
+# AI Model API Keys
 GEMINI_API_KEY=_YOUR_KEY_
 OPENROUTER_API_KEY=_YOUR_KEY_
+OPENAI_API_KEY=_YOUR_KEY_
+
+# Vector Database (Qdrant)
 QDRANT_CLOUDE_URL=_YOUR_URL_
 QDRANT_CLOUDE_API_KEY=_YOUR_KEY_
-OPENAI_API_KEY=_YOUR_KEY_
+
+# Webhooks
 WEBHOOK_PROD_URL=_YOUR_URL_
+
+# Nevermined Integration (for AI service monetization)
+NEVERMINED_AGENT_DID=did:nv:venture-capital-agent-v1
+NEVERMINED_AGENT_NAME=Venture Capital Analysis Agent
+NEVERMINED_AGENT_DESCRIPTION=AI-powered venture capital investment analysis and decision making agent
+NEVERMINED_API_KEY=_YOUR_KEY_
+NEVERMINED_JWT_TOKEN=_YOUR_TOKEN_
+NEVERMINED_TOKEN_ADDRESS=0x1234567890abcdef1234567890abcdef12345678
+NEVERMINED_SERVICE_ENDPOINT=https://your-venture-agent.com/api
 ```
 
 ### Installation

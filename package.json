@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@langchain/community": "^0.3.47",
+    "@nevermined-io/nevermined-sdk-js": "^1.0.0-rc20",
     "@qdrant/js-client-rest": "^1.14.1",
     "@radix-ui/colors": "^3.0.0",
     "@radix-ui/react-avatar": "^1.1.10",
