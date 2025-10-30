@@ -5,7 +5,7 @@ import React, { useState, useCallback } from 'react';
 import { ExpertSelector, ExpertSummary } from '@/components';
 import { useStartupAnalysis } from '@/hooks';
 import type { AvailableModel } from '@/types/ai';
-import { AI_MODELS } from '@/types/ai';
+import { AI_MODELS, AVAILABLE_MODELS } from '@/types/ai';
 
 import { ProcessingHeader } from './ProcessingHeader';
 import { StartupCard } from './StartupCard';
@@ -18,6 +18,14 @@ interface StartupListProps {
 
 export function StartupList({ className }: StartupListProps) {
   const showModels = process.env.NEXT_PUBLIC_SHOW_MODELS === 'true';
+
+  const getDefaultModel = (): AvailableModel => {
+    const envModel = process.env.NEXT_PUBLIC_DEFAULT_AI_MODEL;
+    if (envModel && AVAILABLE_MODELS.includes(envModel as AvailableModel)) {
+      return envModel as AvailableModel;
+    }
+    return AI_MODELS.GEMINI_25_FLASH;
+  };
 
   const {
     startups,
@@ -33,7 +41,7 @@ export function StartupList({ className }: StartupListProps) {
   } = useStartupAnalysis();
 
   const [expandedDetailedAnalysis, setExpandedDetailedAnalysis] = useState<Set<string>>(new Set());
-  const [selectedModel, setSelectedModel] = useState<AvailableModel>(AI_MODELS.GEMINI_25_FLASH);
+  const [selectedModel, setSelectedModel] = useState<AvailableModel>(getDefaultModel());
   const [selectedExperts, setSelectedExperts] = useState<string[]>(['junior-manager']);
 
   const toggleDetailedAnalysis = useCallback((startupId: string) => {

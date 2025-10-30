@@ -3,7 +3,12 @@ import { useState, useCallback } from 'react';
 import { APIClient } from '@/utils/api';
 import type { APIResponse } from '@/lib/api/base-handler';
 import type { Startup, FullStartupAPIResponse, StartupListResponse } from '@/types';
-import type { MultiExpertAnalysisResult, AvailableModel, VentureAgentAnalysisResult, ExpertAnalysisResult } from '@/types/ai';
+import type {
+  MultiExpertAnalysisResult,
+  AvailableModel,
+  VentureAgentAnalysisResult,
+  ExpertAnalysisResult,
+} from '@/types/ai';
 import investmentExperts from '@/data/investment_experts.json';
 import type { InvestmentExpert } from '@/types/expert';
 
@@ -35,21 +40,24 @@ export function useStartupAnalysis() {
       setStartupsWithFullData(prev =>
         prev.map(item => (item.startup.id === startupId ? { ...item, ...updates } : item)),
       );
-  },
-  [],
-);
+    },
+    [],
+  );
 
   const updateExpertAnalyses = useCallback(
     (startupId: string, updater: (analyses: ExpertAnalysisResult[]) => ExpertAnalysisResult[]) => {
       setStartupsWithFullData(prev =>
         prev.map(item =>
           item.startup.id === startupId
-            ? { ...item, aiAnalysis: { expert_analyses: updater(item.aiAnalysis?.expert_analyses || []) } }
-            : item
-        )
+            ? {
+                ...item,
+                aiAnalysis: { expert_analyses: updater(item.aiAnalysis?.expert_analyses || []) },
+              }
+            : item,
+        ),
       );
     },
-    []
+    [],
   );
 
   const processRegularExperts = useCallback(
@@ -57,14 +65,12 @@ export function useStartupAnalysis() {
       startupId: string,
       fullData: FullStartupAPIResponse['data']['data'],
       selectedModel: AvailableModel,
-      regularExpertSlugs: string[]
+      regularExpertSlugs: string[],
     ) => {
       updateExpertAnalyses(startupId, analyses =>
         analyses.map(a =>
-          regularExpertSlugs.includes(a.expert_slug)
-            ? { ...a, status: 'loading' as const }
-            : a
-        )
+          regularExpertSlugs.includes(a.expert_slug) ? { ...a, status: 'loading' as const } : a,
+        ),
       );
 
       let attempts = 0;
@@ -106,10 +112,15 @@ export function useStartupAnalysis() {
             updateExpertAnalyses(startupId, analyses =>
               analyses.map(a => {
                 const result = regularResults.find(r => r.expert_slug === a.expert_slug);
-                return result
-                  ? { ...a, status: 'completed' as const, analysis: result.analysis, metadata: response.data!.metadata }
+                return result && response.data
+                  ? {
+                      ...a,
+                      status: 'completed' as const,
+                      analysis: result.analysis,
+                      metadata: response.data.metadata,
+                    }
                   : a;
-              })
+              }),
             );
 
             return;
@@ -130,8 +141,8 @@ export function useStartupAnalysis() {
               analyses.map(a =>
                 regularExpertSlugs.includes(a.expert_slug)
                   ? { ...a, status: 'error' as const, error: errMsg }
-                  : a
-              )
+                  : a,
+              ),
             );
             return;
           }
@@ -140,7 +151,7 @@ export function useStartupAnalysis() {
         }
       }
     },
-    [updateExpertAnalyses, updateStartupData]
+    [updateExpertAnalyses, updateStartupData],
   );
 
   const switchActiveExpert = useCallback(
@@ -225,14 +236,14 @@ export function useStartupAnalysis() {
       selectedModel: AvailableModel,
     ) => {
       console.log(`[processRagExpert] Starting analysis for ${expertSlug}`);
-      
+
       // Update expert status to loading using the helper function
       updateExpertAnalyses(startupId, analyses =>
         analyses.map(analysis =>
           analysis.expert_slug === expertSlug
             ? { ...analysis, status: 'loading' as const, error: undefined }
-            : analysis
-        )
+            : analysis,
+        ),
       );
 
       try {
@@ -245,46 +256,61 @@ export function useStartupAnalysis() {
             attempts: number;
             model: string;
           };
-        }>('analyze-rag', {
-          projectData: fullData,
-          expertSlug,
-          selectedModel,
-        });
+        }>(
+          'analyze-rag',
+          {
+            projectData: fullData,
+            expertSlug,
+            selectedModel,
+          },
+          {
+            timeout: 90000, // 90 seconds for RAG analysis
+            retries: 2, // Retry up to 2 times on timeout/network errors
+            retryDelay: 2000, // Wait 2 seconds between retries
+          },
+        );
 
         if (response.success && response.data) {
           console.log(`[processRagExpert] Analysis completed for ${expertSlug}`);
-          
+
+          const { analysis, metadata } = response.data;
+
           // Update the specific expert analysis with completed status
           updateExpertAnalyses(startupId, analyses =>
-            analyses.map(analysis =>
-              analysis.expert_slug === expertSlug
+            analyses.map(expertAnalysis =>
+              expertAnalysis.expert_slug === expertSlug
                 ? {
-                    ...analysis,
-                    analysis: response.data!.analysis,
+                    ...expertAnalysis,
+                    analysis,
                     status: 'completed' as const,
-                    metadata: response.data!.metadata,
+                    metadata,
                     error: undefined,
                   }
-                : analysis
-            )
+                : expertAnalysis,
+            ),
           );
         } else {
           throw new Error(response.error || 'RAG analysis failed');
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const isTimeout = errorMessage.includes('timeout');
+
         console.error(`[processRagExpert] Analysis failed for ${expertSlug}:`, error);
-        
-        // Update expert status to error
+
+        // Update expert status to error with user-friendly message
         updateExpertAnalyses(startupId, analyses =>
           analyses.map(analysis =>
             analysis.expert_slug === expertSlug
               ? {
                   ...analysis,
                   status: 'error' as const,
-                  error: error instanceof Error ? error.message : 'Unknown error',
+                  error: isTimeout
+                    ? 'Analysis timeout - RAG search took too long. Try again or select a different model.'
+                    : errorMessage,
                 }
-              : analysis
-          )
+              : analysis,
+          ),
         );
       }
     },
@@ -304,14 +330,10 @@ export function useStartupAnalysis() {
       });
 
       const selectedExpertsData = selectedExperts.map(
-        slug => investmentExperts.find(e => e.slug === slug) as InvestmentExpert
+        slug => investmentExperts.find(e => e.slug === slug) as InvestmentExpert,
       );
-      const ragExpertSlugs = selectedExpertsData
-        .filter(e => e.isRagExpert)
-        .map(e => e.slug);
-      const regularExpertSlugs = selectedExpertsData
-        .filter(e => !e.isRagExpert)
-        .map(e => e.slug);
+      const ragExpertSlugs = selectedExpertsData.filter(e => e.isRagExpert).map(e => e.slug);
+      const regularExpertSlugs = selectedExpertsData.filter(e => !e.isRagExpert).map(e => e.slug);
 
       const initialAnalyses: ExpertAnalysisResult[] = selectedExpertsData.map(expert => ({
         expert_slug: expert.slug,
@@ -328,14 +350,16 @@ export function useStartupAnalysis() {
         processRagExpert(startupId, slug, fullData, selectedModel);
       });
 
-      await processRegularExperts(
-        startupId,
-        fullData,
-        selectedModel,
-        regularExpertSlugs
-      );
+      if (regularExpertSlugs.length > 0) {
+        await processRegularExperts(startupId, fullData, selectedModel, regularExpertSlugs);
+      } else {
+        updateStartupData(startupId, {
+          processingStatus: 'success',
+          processingMessage: 'RAG expert analysis in progress',
+        });
+      }
     },
-    [updateStartupData, processRagExpert, processRegularExperts]
+    [updateStartupData, processRagExpert, processRegularExperts],
   );
 
   const retryAIAnalysis = useCallback(
@@ -346,47 +370,9 @@ export function useStartupAnalysis() {
         return;
       }
 
-      const currentAttempts = startupData.aiAttempts || 0;
-      const newAttemptCount = currentAttempts + 1;
-
-      updateStartupData(startupId, {
-        processingStatus: 'processing',
-        processingMessage: `Retrying analysis (attempt ${newAttemptCount})...`,
-        aiAttempts: newAttemptCount,
-      });
-
-      try {
-        const response = await APIClient.post<{
-          analysis: MultiExpertAnalysisResult;
-          metadata: { processingTime: number; attempts: number; model: string };
-        }>('make-decision', {
-          projectData: startupData.fullData,
-          selectedModel,
-          selectedExperts,
-        });
-
-        if (response.success && response.data) {
-          const firstExpertSlug = response.data.analysis.expert_analyses[0]?.expert_slug;
-          updateStartupData(startupId, {
-            processingStatus: 'success',
-            processingMessage: 'Data processed successfully',
-            aiAnalysis: response.data.analysis,
-            activeExpertSlug: firstExpertSlug,
-            aiAttempts: newAttemptCount,
-          });
-        } else {
-          throw new Error(response.error || 'AI analysis failed');
-        }
-      } catch (error) {
-        console.error(`Retry attempt ${newAttemptCount} failed:`, error);
-        updateStartupData(startupId, {
-          processingStatus: 'error',
-          processingMessage: `Failed to process data after ${newAttemptCount} attempts`,
-          aiAttempts: newAttemptCount,
-        });
-      }
+      await analyzeWithAI(startupId, startupData.fullData, selectedModel, selectedExperts);
     },
-    [startupsWithFullData, updateStartupData],
+    [startupsWithFullData, analyzeWithAI],
   );
 
   const processStartupSequentially = useCallback(
@@ -446,7 +432,7 @@ export function useStartupAnalysis() {
   const retryRagExpert = useCallback(
     async (startupId: string, expertSlug: string, selectedModel: AvailableModel) => {
       console.log(`[retryRagExpert] Retrying analysis for ${expertSlug} on startup ${startupId}`);
-      
+
       const startupData = startupsWithFullData.find(item => item.startup.id === startupId);
       if (!startupData?.fullData) {
         console.error('[retryRagExpert] No full data available for RAG expert retry');

@@ -50,11 +50,13 @@ Create a `.env.local` file in the project root with the following variables:
 NEXT_PUBLIC_APP_URL=http://localhost:3100
 NEXT_PUBLIC_LOGS=true
 NEXT_PUBLIC_SHOW_MODELS=true
+DEEPVEST_PROJECTS_LIMIT=3
 
 # AI Model API Keys
 GEMINI_API_KEY=_YOUR_KEY_
 OPENROUTER_API_KEY=_YOUR_KEY_
 OPENAI_API_KEY=_YOUR_KEY_
+NEXT_PUBLIC_DEFAULT_AI_MODEL=google/gemini-2.5-flash
 
 # Vector Database (Qdrant)
 QDRANT_CLOUDE_URL=_YOUR_URL_
@@ -93,19 +95,22 @@ Open [http://localhost:3100](http://localhost:3100) to see the application.
 
 ## Usage
 
-1. **Select AI Model** - Choose from available AI models (Gemini 2.5 Flash is default)
-2. **Choose Experts** - Select investment experts for analysis
-3. **Analyze Startups** - Click "Analyze Startups" to begin multi-expert analysis
-4. **View Results** - Browse expert analyses with investment recommendations
-5. **Retry Failed** - Use retry functionality (🔄) for failed RAG expert analyses
+1. **Configure Default Model** (optional) - Set `NEXT_PUBLIC_DEFAULT_AI_MODEL` in `.env` to choose default AI model
+2. **Select AI Model** - Choose from available AI models in the UI (defaults to configured model or Gemini 2.5 Flash)
+3. **Choose Experts** - Select investment experts for analysis
+4. **Analyze Startups** - Click "Analyze Startups" to begin multi-expert analysis
+5. **View Results** - Browse expert analyses with investment recommendations
+6. **Retry Failed** - Use retry functionality (🔄) for failed RAG expert analyses
 
 ## Expert Analysis
 
 The platform includes various investment experts:
+
 - **Traditional Experts**: Junior Manager, Senior Partners with different investment approaches
 - **RAG Experts**: Enhanced experts using vector database for contextual analysis (e.g., Ben Horowitz)
 
 Each expert provides:
+
 - Investment decision (INVEST/PASS)
 - Detailed reasoning and analysis
 - Risk assessment

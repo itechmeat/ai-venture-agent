@@ -261,7 +261,11 @@ export interface AIProviderConfig {
 export const AI_TIMEOUT = 120000; // 2 minutes
 export const MAX_PROMPT_LENGTH = 50000; // 50k characters
 
-// Model configurations
+/**
+ * Model configurations
+ * These model IDs can be used in NEXT_PUBLIC_DEFAULT_AI_MODEL environment variable
+ * Example: NEXT_PUBLIC_DEFAULT_AI_MODEL=google/gemini-2.5-flash
+ */
 export const AI_MODELS = {
   // Google Gemini (Free via direct API)
   GEMINI_FLASH: 'gemini-2.0-flash',
@@ -271,6 +275,8 @@ export const AI_MODELS = {
   GROK_3: 'x-ai/grok-3', // $3/M input, $15/M output
   MINIMAX_01: 'minimax/minimax-01', // $0.20/M input, $1.10/M output
   // MINIMAX_M1: 'minimax/minimax-m1', // $0.30/M input, $1.65M output
+  MINIMAX_M2: 'minimax/minimax-m2', // $0.15/M input, $0.45M output
+  MINIMAX_M2_FREE: 'minimax/minimax-m2:free', // FREE
   // MISTRAL_SMALL_32: 'mistralai/mistral-small-3.2-24b-instruct:free', // Free
   MAI_DS_R1: 'microsoft/mai-ds-r1:free', // Free
   DEEPSEEK_R1_0528: 'deepseek/deepseek-r1-0528:free', // Free
@@ -286,6 +292,8 @@ export const MODEL_DISPLAY_NAMES = {
   [AI_MODELS.GEMINI_25_FLASH]: 'Gemini 2.5 Flash (OpenRouter)',
   [AI_MODELS.GROK_3]: 'Grok 3 (OpenRouter)',
   [AI_MODELS.MINIMAX_01]: 'MiniMax-01 (OpenRouter)',
+  [AI_MODELS.MINIMAX_M2]: 'MiniMax-02 (OpenRouter)',
+  [AI_MODELS.MINIMAX_M2_FREE]: 'MiniMax-02-Free (OpenRouter)',
   // [AI_MODELS.MINIMAX_M1]: 'minimax/minimax-m1 (OpenRouter)',
   [AI_MODELS.MAI_DS_R1]: 'MAI DS R1 (OpenRouter, 0)',
   // [AI_MODELS.MISTRAL_SMALL_32]: 'Mistral Small 3.2 24B (OpenRouter, 0)',
@@ -303,6 +311,8 @@ export const AVAILABLE_MODELS = [
   AI_MODELS.GROK_3,
   AI_MODELS.MINIMAX_01,
   // AI_MODELS.MINIMAX_M1,
+  AI_MODELS.MINIMAX_M2,
+  AI_MODELS.MINIMAX_M2_FREE,
   AI_MODELS.MAI_DS_R1,
   // AI_MODELS.MISTRAL_SMALL_32,
   AI_MODELS.DEEPSEEK_R1_0528,

@@ -31,15 +31,27 @@ export async function GET(): Promise<NextResponse<APIResponse<StartupListRespons
       throw new Error('DeepVest API returned unsuccessful response');
     }
 
+    const projectsLimit = parseInt(process.env.DEEPVEST_PROJECTS_LIMIT || '0', 10);
+    const shouldLimitProjects = projectsLimit > 0;
+
+    const projects = shouldLimitProjects
+      ? deepVestData.data.projects.slice(-projectsLimit)
+      : deepVestData.data.projects;
+
     const processingTime = Date.now() - startTime;
 
     return NextResponse.json(
       {
         success: true,
-        data: deepVestData.data,
+        data: {
+          ...deepVestData.data,
+          projects,
+        },
         metadata: {
           processingTime,
-          totalProjects: deepVestData.data.projects.length,
+          totalProjects: projects.length,
+          originalTotalProjects: deepVestData.data.projects.length,
+          limited: shouldLimitProjects,
         },
       },
       {
